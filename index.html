@@ -45,28 +45,38 @@
   <!-- Main Container -->
   <main class="max-w-3xl mx-auto w-full p-4 flex-grow">
     
-    <!-- Navigation Tabs -->
-    <div class="flex justify-center space-x-4 mb-6">
-      <button id="tab-quiz-btn" onclick="switchTab('quiz')" class="px-6 py-2 rounded-full font-bold text-lg shadow-md transition bg-amber-400 text-amber-950 scale-105">
-        <i class="fa-solid fa-gamepad mr-2"></i>今日答题闯关
+    <!-- Navigation Tabs (升级：支持切换 4 个页面) -->
+    <div class="flex flex-wrap justify-center gap-2 mb-6">
+      <button id="tab-quiz-btn" onclick="switchTab('quiz')" class="px-5 py-2 rounded-full font-bold text-base shadow-md transition bg-amber-400 text-amber-950 scale-105">
+        <i class="fa-solid fa-gamepad mr-1"></i>今日闯关
       </button>
-      <button id="tab-shop-btn" onclick="switchTab('shop')" class="px-6 py-2 rounded-full font-bold text-lg shadow-md transition bg-white text-emerald-700 hover:bg-emerald-50">
-        <i class="fa-solid fa-gift mr-2"></i>心愿奖品兑换
+      <button id="tab-shop-btn" onclick="switchTab('shop')" class="px-5 py-2 rounded-full font-bold text-base shadow-md transition bg-white text-emerald-700 hover:bg-emerald-50">
+        <i class="fa-solid fa-gift mr-1"></i>心愿兑换
+      </button>
+      <button id="tab-stats-btn" onclick="switchTab('stats')" class="px-5 py-2 rounded-full font-bold text-base shadow-md transition bg-white text-emerald-700 hover:bg-emerald-50">
+        <i class="fa-solid fa-chart-column mr-1"></i>学习统计
+      </button>
+      <button id="tab-mistakes-btn" onclick="switchTab('mistakes')" class="px-5 py-2 rounded-full font-bold text-base shadow-md transition bg-white text-emerald-700 hover:bg-emerald-50">
+        <i class="fa-solid fa-book-skull mr-1"></i>错题集 (<span id="mistake-count-badge">0</span>)
       </button>
     </div>
 
     <!-- TAB 1: QUIZ CONTAINER -->
     <div id="quiz-container" class="space-y-6">
-      <!-- Status Card -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 flex items-center justify-between">
+      <!-- Status Card (升级：展示当天日期) -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div>
-          <h2 class="text-xl font-bold text-emerald-800 flex items-center gap-2">
-            <i class="fa-solid fa-calendar-day text-amber-500"></i> 苏教版二年级上册·每日精炼
+          <div class="flex items-center gap-2">
+            <h2 class="text-xl font-bold text-emerald-800 flex items-center gap-2">
+              <i class="fa-solid fa-calendar-day text-amber-500"></i> 苏教版二年级上册·每日精炼
+            </h2>
             <span id="deck-tag" class="text-xs bg-emerald-100 text-emerald-700 font-normal px-2 py-0.5 rounded-full">套题 1</span>
-          </h2>
-          <p class="text-slate-500 text-sm mt-1">共 5 道题，每题 1 分。每日根据日期自动更换题库！</p>
+          </div>
+          <p class="text-slate-500 text-sm mt-1">
+            今天是 <span id="current-date-text" class="font-bold text-emerald-600"></span>，共 5 道题，每题 1 分。
+          </p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 self-end md:self-auto">
           <button onclick="shuffleDeck()" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-3 py-1.5 rounded-lg border border-amber-300 transition flex items-center gap-1">
             <i class="fa-solid fa-shuffle"></i> 换一批
           </button>
@@ -93,20 +103,81 @@
         <div class="text-4xl">🎉</div>
         <h3 class="text-2xl font-bold text-emerald-800" id="result-title">太棒啦！交卷成功</h3>
         <p class="text-slate-700 text-lg" id="result-score-text"></p>
-        <p class="text-sm text-slate-500">提示：下拉可以查看每道题的详细解答与知识点剖析哦！</p>
+        <p class="text-sm text-slate-500">做错的题目已自动收录进“错题集”中，可前往专项复习哦！</p>
       </div>
     </div>
 
     <!-- TAB 2: SHOP CONTAINER -->
     <div id="shop-container" class="hidden space-y-6">
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100">
-        <h2 class="text-xl font-bold text-emerald-800 flex items-center gap-2">
-          <i class="fa-solid fa-store text-pink-500"></i> 心愿奖品小天地
-        </h2>
-        <p class="text-slate-500 text-sm mt-1">用答题赚来的积分，向爸爸妈妈兑换奖品吧！</p>
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 space-y-3">
+        <div>
+          <h2 class="text-xl font-bold text-emerald-800 flex items-center gap-2">
+            <i class="fa-solid fa-store text-pink-500"></i> 心愿奖品小天地
+          </h2>
+          <p class="text-slate-500 text-sm mt-1">用答题赚来的积分，向爸爸妈妈兑换心愿奖品吧！</p>
+        </div>
       </div>
 
       <div id="rewards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+      <!-- 兑换历史记录展示区 -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 space-y-3">
+        <h3 class="font-bold text-slate-800 flex items-center gap-2 text-base">
+          <i class="fa-solid fa-clock-rotate-left text-purple-500"></i> 积分兑换历史记录
+        </h3>
+        <div id="redemption-history-list" class="space-y-2 text-sm max-h-48 overflow-y-auto">
+          <p class="text-slate-400 text-xs py-2 text-center">暂无兑换记录，快去攒积分吧~</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: STATS CONTAINER (新增：学习统计) -->
+    <div id="stats-container" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100">
+        <h2 class="text-xl font-bold text-emerald-800 flex items-center gap-2">
+          <i class="fa-solid fa-chart-line text-blue-500"></i> 学习统计看板
+        </h2>
+        <p class="text-slate-500 text-sm mt-1">记录孩子每日的积分获取与答题成长足迹</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 text-center space-y-1">
+          <div class="text-slate-400 text-xs">累计总积分</div>
+          <div id="stats-total-score" class="text-3xl font-bold text-emerald-600">0</div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 text-center space-y-1">
+          <div class="text-slate-400 text-xs">打卡闯关天数</div>
+          <div id="stats-days-count" class="text-3xl font-bold text-amber-500">0</div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 space-y-3">
+        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+          <i class="fa-solid fa-calendar-days text-emerald-600"></i> 每日积分获得明细
+        </h3>
+        <div id="daily-score-list" class="space-y-2 max-h-64 overflow-y-auto">
+          <p class="text-slate-400 text-xs py-4 text-center">还没有答题记录，赶快去完成今天的闯关吧！</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: MISTAKES CONTAINER (新增：错题集专项练习) -->
+    <div id="mistakes-container" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-book-skull text-red-500"></i> 错题集专项巩固
+          </h2>
+          <p class="text-slate-500 text-sm mt-1">这里会自动汇集闯关做错的题目，帮孩子攻克薄弱环节！</p>
+        </div>
+        <button id="clear-mistakes-btn" onclick="clearMistakes()" class="hidden text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg border border-red-200">
+          清空错题集
+        </button>
+      </div>
+
+      <div id="mistakes-list" class="space-y-4">
+        <!-- 动态渲染错题 -->
+      </div>
     </div>
   </main>
 
@@ -180,6 +251,17 @@
         <label class="block text-xs font-semibold text-slate-600 mb-1">所需积分</label>
         <input type="number" id="edit-reward-cost" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500">
       </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">奖品类别/图标</label>
+        <select id="edit-reward-icon" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500">
+          <option value="fa-gamepad">🎮 游戏时间</option>
+          <option value="fa-ice-cream">🍦 零食美味</option>
+          <option value="fa-film">🎬 电影看片</option>
+          <option value="fa-plane">🎡 游乐园/出门</option>
+          <option value="fa-book">📚 新书/绘本</option>
+          <option value="fa-gift">🎁 礼物/玩具</option>
+        </select>
+      </div>
       <div class="flex gap-2 pt-2">
         <button onclick="saveEditedReward()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-semibold">保存修改</button>
         <button onclick="closeEditModal()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg text-sm font-semibold">取消</button>
@@ -192,211 +274,21 @@
   </footer>
 
   <script>
-    // 多套苏教版二年级上册精选题库
+    // 题库数据
     const quizDecks = [
-      // Deck 1
       [
-        {
-          id: 1,
-          category: "数学 · 连加连减与混合计算",
-          question: "计算 45 + 28 - 19 的正确结果是多少？",
-          options: [
-            { key: "A", text: "54" },
-            { key: "B", text: "64" },
-            { key: "C", text: "44" },
-            { key: "D", text: "73" }
-          ],
-          answer: "A",
-          explanation: "根据从左往右的计算顺序，先算 45 + 28 = 73，再算 73 - 19 = 54。"
-        },
-        {
-          id: 2,
-          category: "数学 · 平行四边形的认识",
-          question: "关于平行四边形的特点，下面说法正确的是哪一项？",
-          options: [
-            { key: "A", text: "它有四条边和四个角" },
-            { key: "B", text: "四个角必须都是直角" },
-            { key: "C", text: "它只有三条边" },
-            { key: "D", text: "四条边长度必须全部相等" }
-          ],
-          answer: "A",
-          explanation: "平行四边形属于四边形，具有 4 条边和 4 个角；只有 4 个角都是直角时才是长方形或正方形。"
-        },
-        {
-          id: 3,
-          category: "数学 · 表内乘法",
-          question: "计算算式 5 × 4 = ?，计算时用到的乘法口诀是哪一个？",
-          options: [
-            { key: "A", text: "四五二十" },
-            { key: "B", text: "五五二十五" },
-            { key: "C", text: "三五十五" },
-            { key: "D", text: "四六二十四" }
-          ],
-          answer: "A",
-          explanation: "根据乘法口诀“四五二十”，可以算得 5 × 4 = 20。"
-        },
-        {
-          id: 4,
-          category: "语文 · 汉字结构与组词",
-          question: "苏教版语文二上课文《水乡歌》中的生字“装”，它的结构和部首是什么？",
-          options: [
-            { key: "A", text: "上下结构，部首是“衣”" },
-            { key: "B", text: "左右结构，部首是“壮”" },
-            { key: "C", text: "半包围结构，部首是“衣”" },
-            { key: "D", text: "上下结构，部首是“壮”" }
-          ],
-          answer: "A",
-          explanation: "“装”字上半部分是“壮”，下半部分是“衣”，属于上下结构，部首是下方的衣字底。"
-        },
-        {
-          id: 5,
-          category: "语文 · 古诗背诵与默写",
-          question: "请补全宋代诗人王安石《梅花》中的诗句：“遥知不是雪，________________。”",
-          options: [
-            { key: "A", text: "为有暗香来" },
-            { key: "B", text: "粒粒皆辛苦" },
-            { key: "C", text: "乡音无改鬓毛衰" },
-            { key: "D", text: "处处闻啼鸟" }
-          ],
-          answer: "A",
-          explanation: "《梅花》（宋·王安石）全文为：“墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。”"
-        }
+        { id: 101, category: "数学 · 连加连减", question: "计算 45 + 28 - 19 的正确结果是多少？", options: [{ key: "A", text: "54" }, { key: "B", text: "64" }, { key: "C", text: "44" }, { key: "D", text: "73" }], answer: "A", explanation: "先算 45 + 28 = 73，再算 73 - 19 = 54。" },
+        { id: 102, category: "数学 · 平行四边形", question: "关于平行四边形的特点，下面说法正确的是哪一项？", options: [{ key: "A", text: "它有四条边和四个角" }, { key: "B", text: "四个角必须都是直角" }, { key: "C", text: "它只有三条边" }, { key: "D", text: "四条边长度必须全部相等" }], answer: "A", explanation: "平行四边形属于四边形，具有 4 条边和 4 个角。" },
+        { id: 103, category: "数学 · 表内乘法", question: "计算算式 5 × 4 = ?，计算时用到的乘法口诀是哪一个？", options: [{ key: "A", text: "四五二十" }, { key: "B", text: "五五二十五" }, { key: "C", text: "三五十五" }, { key: "D", text: "四六二十四" }], answer: "A", explanation: "根据乘法口诀“四五二十”，可求得 5 × 4 = 20。" },
+        { id: 104, category: "语文 · 汉字结构", question: "苏教版语文二上课文中的生字“装”，它的结构和部首是什么？", options: [{ key: "A", text: "上下结构，部首是“衣”" }, { key: "B", text: "左右结构，部首是“壮”" }, { key: "C", text: "半包围结构，部首是“衣”" }, { key: "D", text: "上下结构，部首是“壮”" }], answer: "A", explanation: "“装”字上半部分是“壮”，下半部分是“衣”，属于上下结构，部首是衣字底。" },
+        { id: 105, category: "语文 · 古诗背诵", question: "请补全宋代诗人王安石《梅花》中的诗句：“遥知不是雪，________________。”", options: [{ key: "A", text: "为有暗香来" }, { key: "B", text: "粒粒皆辛苦" }, { key: "C", text: "乡音无改鬓毛衰" }, { key: "D", text: "处处闻啼鸟" }], answer: "A", explanation: "《梅花》全文为：墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。" }
       ],
-      // Deck 2
       [
-        {
-          id: 1,
-          category: "数学 · 表内乘法与乘加",
-          question: "算式 5 + 5 + 5 + 3 可以改写成下面哪一个乘加算式？",
-          options: [
-            { key: "A", text: "5 × 3 + 3" },
-            { key: "B", text: "5 × 4 - 3" },
-            { key: "C", text: "5 × 3 + 5" },
-            { key: "D", text: "5 × 4 + 3" }
-          ],
-          answer: "A",
-          explanation: "5 + 5 + 5 表示 3 个 5 相加（5 × 3），再加上 3 即为 5 × 3 + 3 = 18。"
-        },
-        {
-          id: 2,
-          category: "数学 · 长度单位",
-          question: "请选择最合适的单位：测量数学课本的厚度大约是 1（ ），小明的身高大约是 130（ ）。",
-          options: [
-            { key: "A", text: "厘米；厘米" },
-            { key: "B", text: "米；厘米" },
-            { key: "C", text: "厘米；米" },
-            { key: "D", text: "米；米" }
-          ],
-          answer: "A",
-          explanation: "数学课本较薄用“厘米”；小明身高用“厘米”表示最符合实际。"
-        },
-        {
-          id: 3,
-          category: "数学 · 角的初步认识",
-          question: "用放大镜观察一个角，这个角的大小会发生什么变化？",
-          options: [
-            { key: "A", text: "保持不变" },
-            { key: "B", text: "变大" },
-            { key: "C", text: "变小" },
-            { key: "D", text: "变成直角" }
-          ],
-          answer: "A",
-          explanation: "角的大小只与两边张开的大小有关。用放大镜看角，边变长了但张开的角度保持不变。"
-        },
-        {
-          id: 4,
-          category: "语文 · 汉字结构",
-          question: "下面哪一组词语中的字全部都是“全包围结构”？",
-          options: [
-            { key: "A", text: "团圆、国庆" },
-            { key: "B", text: "花园、校园" },
-            { key: "C", text: "公园、圆形" },
-            { key: "D", text: "树林、同学" }
-          ],
-          answer: "A",
-          explanation: "“团”与“国”均为典型的全包围结构字。"
-        },
-        {
-          id: 5,
-          category: "语文 · 古诗积累",
-          question: "请补全唐代诗人贺知章《回乡偶书》中的诗句：“少小离家老大回，________________。”",
-          options: [
-            { key: "A", text: "乡音无改鬓毛衰" },
-            { key: "B", text: "黄河入海流" },
-            { key: "C", text: "处处闻啼鸟" },
-            { key: "D", text: "低头思故乡" }
-          ],
-          answer: "A",
-          explanation: "完整诗句为：“少小离家老大回，乡音无改鬓毛衰。”"
-        }
-      ],
-      // Deck 3
-      [
-        {
-          id: 1,
-          category: "数学 · 表内乘法",
-          question: "小明在计算 4 × 6 时，用到了口诀“四六二十四”。下面哪个算式不能用这句口诀计算？",
-          options: [
-            { key: "A", text: "4 + 6" },
-            { key: "B", text: "6 × 4" },
-            { key: "C", text: "4 + 4 + 4 + 4 + 4 + 4" },
-            { key: "D", text: "6 + 6 + 6 + 6" }
-          ],
-          answer: "A",
-          explanation: "4 + 6 是加法算式，不能使用乘法口诀求解；其余选项均表示 4 与 6 的乘法意义。"
-        },
-        {
-          id: 2,
-          category: "数学 · 趣题应用",
-          question: "公交车上原本有 45 人，到站后下车 18 人，又上车 12 人。现在车上还有多少人？",
-          options: [
-            { key: "A", text: "39 人" },
-            { key: "B", text: "15 人" },
-            { key: "C", text: "51 人" },
-            { key: "D", text: "27 人" }
-          ],
-          answer: "A",
-          explanation: "45 - 18 + 12 = 39 人。"
-        },
-        {
-          id: 3,
-          category: "数学 · 角的识别",
-          question: "一个标准的三角板上有几个直角和几个锐角？",
-          options: [
-            { key: "A", text: "1个直角，2个锐角" },
-            { key: "B", text: "2个直角，1个锐角" },
-            { key: "C", text: "3个直角，0个锐角" },
-            { key: "D", text: "1个直角，1个钝角" }
-          ],
-          answer: "A",
-          explanation: "标准三角板包含 1 个直角和 2 个锐角。"
-        },
-        {
-          id: 4,
-          category: "语文 · 字词辨析",
-          question: "下面哪一组词语中的字全部都是“左右结构”？",
-          options: [
-            { key: "A", text: "唱歌、桥梁" },
-            { key: "B", text: "园林、圆圈" },
-            { key: "C", text: "依靠、花朵" },
-            { key: "D", text: "整体、美丽" }
-          ],
-          answer: "A",
-          explanation: "“唱”和“歌”、“桥”和“梁”均为左右（或左中右）结构。"
-        },
-        {
-          id: 5,
-          category: "语文 · 古诗背诵",
-          question: "唐代诗人李绅在《悯农（其二）》中“谁知盘中餐”的前一句是什么？",
-          options: [
-            { key: "A", text: "汗滴禾下土" },
-            { key: "B", text: "锄禾日当午" },
-            { key: "C", text: "春种一粒粟" },
-            { key: "D", text: "秋收万颗子" }
-          ],
-          answer: "A",
-          explanation: "原诗为：“锄禾日当午，汗滴禾下土。谁知盘中餐，粒粒皆辛苦。”"
-        }
+        { id: 201, category: "数学 · 乘加算式", question: "算式 5 + 5 + 5 + 3 可以改写成下面哪一个乘加算式？", options: [{ key: "A", text: "5 × 3 + 3" }, { key: "B", text: "5 × 4 - 3" }, { key: "C", text: "5 × 3 + 5" }, { key: "D", text: "5 × 4 + 3" }], answer: "A", explanation: "5 + 5 + 5 是 3 个 5 相加（5 × 3），再加上 3 即为 5 × 3 + 3。" },
+        { id: 202, category: "数学 · 长度单位", question: "测量数学课本的厚度大约是 1（ ），小明的身高大约是 130（ ）。", options: [{ key: "A", text: "厘米；厘米" }, { key: "B", text: "米；厘米" }, { key: "C", text: "厘米；米" }, { key: "D", text: "米；米" }], answer: "A", explanation: "数学课本较薄用厘米，小明身高用厘米。" },
+        { id: 203, category: "数学 · 角的认识", question: "用放大镜观察一个角，这个角的大小会发生什么变化？", options: [{ key: "A", text: "保持不变" }, { key: "B", text: "变大" }, { key: "C", text: "变小" }, { key: "D", text: "变成直角" }], answer: "A", explanation: "角的大小只与两边张开大小有关，用放大镜观察角度保持不变。" },
+        { id: 204, category: "语文 · 全包围结构", question: "下面哪一组词语中的字全部都是“全包围结构”？", options: [{ key: "A", text: "团圆、国庆" }, { key: "B", text: "花园、校园" }, { key: "C", text: "公园、圆形" }, { key: "D", text: "树林、同学" }], answer: "A", explanation: "“团”与“国”均为典型的全包围结构字。" },
+        { id: 205, category: "语文 · 古诗背诵", question: "请补全唐代诗人贺知章《回乡偶书》中的诗句：“少小离家老大回，________________。”", options: [{ key: "A", text: "乡音无改鬓毛衰" }, { key: "B", text: "黄河入海流" }, { key: "C", text: "处处闻啼鸟" }, { key: "D", text: "低头思故乡" }], answer: "A", explanation: "原诗为：少小离家老大回，乡音无改鬓毛衰。" }
       ]
     ];
 
@@ -407,27 +299,34 @@
       { id: 4, title: "购买一本喜欢的图书/绘本", cost: 25, icon: "fa-book", bg: "bg-amber-50 text-amber-600" }
     ];
 
+    // 获取当前日期字符串 YYYY-MM-DD
+    const todayDateStr = new Date().toISOString().slice(0, 10);
+
     let currentDeckIndex = getDailyDeckIndex();
     let currentQuizData = quizDecks[currentDeckIndex];
     let totalScore = parseInt(localStorage.getItem('total_score')) || 0;
-    let submittedToday = localStorage.getItem(`quiz_submitted_${currentDeckIndex}`) === 'true';
-    let userAnswers = JSON.parse(localStorage.getItem(`user_answers_${currentDeckIndex}`)) || {};
+    let submittedToday = localStorage.getItem(`quiz_submitted_${todayDateStr}_${currentDeckIndex}`) === 'true';
+    let userAnswers = JSON.parse(localStorage.getItem(`user_answers_${todayDateStr}_${currentDeckIndex}`)) || {};
     let customRewards = JSON.parse(localStorage.getItem('custom_rewards')) || defaultRewards;
+    let redemptionHistory = JSON.parse(localStorage.getItem('redemption_history')) || [];
+    let dailyRecords = JSON.parse(localStorage.getItem('daily_records')) || {};
+    let mistakeBook = JSON.parse(localStorage.getItem('mistake_book')) || {};
 
-    // 根据日期自动计算当天对应的套题序号
     function getDailyDeckIndex() {
-      const todayStr = new Date().toISOString().slice(0, 10);
       let hash = 0;
-      for (let i = 0; i < todayStr.length; i++) {
-        hash += todayStr.charCodeAt(i);
+      for (let i = 0; i < todayDateStr.length; i++) {
+        hash += todayDateStr.charCodeAt(i);
       }
       return hash % quizDecks.length;
     }
 
     window.onload = function() {
+      document.getElementById('current-date-text').innerText = todayDateStr;
       updateScoreDisplay();
       renderQuiz();
       renderRewards();
+      renderStats();
+      renderMistakes();
     };
 
     function updateScoreDisplay() {
@@ -438,8 +337,8 @@
     function shuffleDeck() {
       currentDeckIndex = (currentDeckIndex + 1) % quizDecks.length;
       currentQuizData = quizDecks[currentDeckIndex];
-      submittedToday = localStorage.getItem(`quiz_submitted_${currentDeckIndex}`) === 'true';
-      userAnswers = JSON.parse(localStorage.getItem(`user_answers_${currentDeckIndex}`)) || {};
+      submittedToday = localStorage.getItem(`quiz_submitted_${todayDateStr}_${currentDeckIndex}`) === 'true';
+      userAnswers = JSON.parse(localStorage.getItem(`user_answers_${todayDateStr}_${currentDeckIndex}`)) || {};
       renderQuiz();
     }
 
@@ -488,7 +387,7 @@
           expHTML = `
             <div class="mt-4 p-4 rounded-xl text-sm ${isCorrect ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-red-50 border border-red-200 text-red-800'} space-y-1">
               <div class="font-bold flex items-center gap-1.5 text-base">
-                ${isCorrect ? '<i class="fa-solid fa-circle-check text-emerald-600"></i> 回答正确 (+1分)' : '<i class="fa-solid fa-circle-xmark text-red-600"></i> 回答错误 (0分)'}
+                ${isCorrect ? '<i class="fa-solid fa-circle-check text-emerald-600"></i> 回答正确 (+1分)' : '<i class="fa-solid fa-circle-xmark text-red-600"></i> 回答错误 (0分 - 已自动收入错题集)'}
               </div>
               <p><span class="font-semibold">正确答案：</span>${q.answer}</p>
               <p><span class="font-semibold">题目解析：</span>${q.explanation}</p>
@@ -525,7 +424,7 @@
           if (userAnswers[q.id] === q.answer) earned++;
         });
 
-        document.getElementById('result-score-text').innerHTML = `你本次答对 <strong>${earned}</strong> 道题，获得了 <strong>${earned}</strong> 积分！`;
+        document.getElementById('result-score-text').innerHTML = `你本次在 <strong>${todayDateStr}</strong> 答对 <strong>${earned}</strong> 道题，获得了 <strong>${earned}</strong> 积分！`;
       } else {
         submitBtn.classList.remove('hidden');
         resultCard.classList.add('hidden');
@@ -536,7 +435,7 @@
     function selectOption(qId, key) {
       if (submittedToday) return;
       userAnswers[qId] = key;
-      localStorage.setItem(`user_answers_${currentDeckIndex}`, JSON.stringify(userAnswers));
+      localStorage.setItem(`user_answers_${todayDateStr}_${currentDeckIndex}`, JSON.stringify(userAnswers));
       renderQuiz();
     }
 
@@ -552,15 +451,27 @@
 
       let earnedPoints = 0;
       currentQuizData.forEach(q => {
-        if (userAnswers[q.id] === q.answer) earnedPoints += 1;
+        if (userAnswers[q.id] === q.answer) {
+          earnedPoints += 1;
+        } else {
+          // 收集错题
+          mistakeBook[q.id] = q;
+        }
       });
 
       totalScore += earnedPoints;
       submittedToday = true;
 
-      localStorage.setItem(`quiz_submitted_${currentDeckIndex}`, 'true');
+      // 记录今日积分情况
+      dailyRecords[todayDateStr] = (dailyRecords[todayDateStr] || 0) + earnedPoints;
+      localStorage.setItem('daily_records', JSON.stringify(dailyRecords));
+      localStorage.setItem('mistake_book', JSON.stringify(mistakeBook));
+      localStorage.setItem(`quiz_submitted_${todayDateStr}_${currentDeckIndex}`, 'true');
+
       updateScoreDisplay();
       renderQuiz();
+      renderStats();
+      renderMistakes();
 
       document.getElementById('quiz-result-card').scrollIntoView({ behavior: 'smooth' });
     }
@@ -569,12 +480,13 @@
       if (confirm("确定要重置当前答题状态吗？（重置不会扣除已获得的积分，可重新测试）")) {
         submittedToday = false;
         userAnswers = {};
-        localStorage.removeItem(`quiz_submitted_${currentDeckIndex}`);
-        localStorage.removeItem(`user_answers_${currentDeckIndex}`);
+        localStorage.removeItem(`quiz_submitted_${todayDateStr}_${currentDeckIndex}`);
+        localStorage.removeItem(`user_answers_${todayDateStr}_${currentDeckIndex}`);
         renderQuiz();
       }
     }
 
+    // 奖品与兑换历史
     function renderRewards() {
       const grid = document.getElementById('rewards-grid');
       grid.innerHTML = '';
@@ -604,19 +516,187 @@
       });
 
       renderParentRewardsList();
+      renderRedemptionHistory();
     }
 
     function redeemReward(title, cost) {
       if (totalScore >= cost) {
         if (confirm(`确定要消耗 ${cost} 积分兑换“${title}”吗？`)) {
           totalScore -= cost;
+          
+          // 记录兑换历史（包含精确日期时间）
+          const nowTime = new Date().toLocaleString();
+          redemptionHistory.unshift({ title, cost, time: nowTime });
+          localStorage.setItem('redemption_history', JSON.stringify(redemptionHistory));
+
           updateScoreDisplay();
           renderRewards();
-          alert(`🎉 兑换成功！快去找爸爸妈妈兑换奖品【${title}】吧！`);
+          renderStats();
+          alert(`🎉 兑换成功！兑换时间：${nowTime}\n快去找爸爸妈妈兑换奖品【${title}】吧！`);
         }
       }
     }
 
+    function renderRedemptionHistory() {
+      const container = document.getElementById('redemption-history-list');
+      if (!container) return;
+
+      if (redemptionHistory.length === 0) {
+        container.innerHTML = `<p class="text-slate-400 text-xs py-2 text-center">暂无兑换记录，快去攒积分吧~</p>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      redemptionHistory.forEach(h => {
+        const item = document.createElement('div');
+        item.className = "flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border text-xs";
+        item.innerHTML = `
+          <div>
+            <span class="font-bold text-slate-800">${h.title}</span> 
+            <span class="text-amber-600 font-semibold ml-1">(-${h.cost}分)</span>
+          </div>
+          <span class="text-slate-400">${h.time}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // 学习统计渲染
+    function renderStats() {
+      document.getElementById('stats-total-score').innerText = totalScore;
+      
+      const dates = Object.keys(dailyRecords);
+      document.getElementById('stats-days-count').innerText = dates.length;
+
+      const listContainer = document.getElementById('daily-score-list');
+      if (dates.length === 0) {
+        listContainer.innerHTML = `<p class="text-slate-400 text-xs py-4 text-center">还没有答题记录，赶快去完成今天的闯关吧！</p>`;
+        return;
+      }
+
+      listContainer.innerHTML = '';
+      // 按日期倒序排列
+      dates.sort().reverse().forEach(date => {
+        const score = dailyRecords[date];
+        const item = document.createElement('div');
+        item.className = "flex justify-between items-center bg-emerald-50/60 p-3 rounded-xl border border-emerald-100 text-sm";
+        item.innerHTML = `
+          <div class="flex items-center gap-2 font-medium text-slate-700">
+            <i class="fa-solid fa-calendar-check text-emerald-600"></i> ${date}
+          </div>
+          <div class="font-bold text-emerald-700">+${score} 积分</div>
+        `;
+        listContainer.appendChild(item);
+      });
+    }
+
+    // 错题集专项练习渲染
+    let mistakeAnswers = {};
+    function renderMistakes() {
+      const mistakesKeys = Object.keys(mistakeBook);
+      const container = document.getElementById('mistakes-list');
+      const badge = document.getElementById('mistake-count-badge');
+      const clearBtn = document.getElementById('clear-mistakes-btn');
+
+      badge.innerText = mistakesKeys.length;
+
+      if (mistakesKeys.length === 0) {
+        clearBtn.classList.add('hidden');
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl p-8 text-center space-y-2 border">
+            <div class="text-3xl">🎯</div>
+            <h4 class="font-bold text-slate-700 text-base">太棒了，目前没有错题记录！</h4>
+            <p class="text-xs text-slate-400">平时答错的题目会自动来到这里，方便查漏补缺哦。</p>
+          </div>
+        `;
+        return;
+      }
+
+      clearBtn.classList.remove('hidden');
+      container.innerHTML = '';
+
+      mistakesKeys.forEach((qId, index) => {
+        const q = mistakeBook[qId];
+        const isSelected = mistakeAnswers[q.id];
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-2xl p-6 shadow-sm border border-red-100 space-y-4";
+
+        let optionsHTML = '';
+        q.options.forEach(opt => {
+          let btnStyle = "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50";
+          let badgeStyle = "bg-slate-100 text-slate-600";
+
+          if (isSelected === q.answer) {
+            if (opt.key === q.answer) {
+              btnStyle = "border-emerald-500 bg-emerald-50 text-emerald-900 font-bold";
+              badgeStyle = "bg-emerald-500 text-white";
+            }
+          } else if (isSelected === opt.key) {
+            btnStyle = "border-red-400 bg-red-50 text-red-900 line-through";
+            badgeStyle = "bg-red-500 text-white";
+          } else if (opt.key === q.answer && isSelected) {
+            btnStyle = "border-emerald-400 bg-emerald-50 text-emerald-900 font-bold";
+            badgeStyle = "bg-emerald-500 text-white";
+          }
+
+          optionsHTML += `
+            <label class="flex items-center p-3 rounded-xl border-2 cursor-pointer transition ${btnStyle}">
+              <input type="radio" name="mistake_${q.id}" value="${opt.key}" ${isSelected === opt.key ? 'checked' : ''} onchange="selectMistakeOption(${q.id}, '${opt.key}')" class="hidden">
+              <span class="w-6 h-6 rounded-lg ${badgeStyle} font-bold flex items-center justify-center text-xs mr-3 shrink-0">${opt.key}</span>
+              <span class="text-sm">${opt.text}</span>
+            </label>
+          `;
+        });
+
+        let feedbackHTML = '';
+        if (isSelected) {
+          const isCorrect = isSelected === q.answer;
+          feedbackHTML = `
+            <div class="mt-3 p-3 rounded-xl text-xs ${isCorrect ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'} space-y-1">
+              <div class="font-bold">${isCorrect ? '✨ 答对了！这道错题已掌握！' : '❌ 还需要加油哦！'}</div>
+              <p><strong>正确答案：</strong>${q.answer}</p>
+              <p><strong>解析：</strong>${q.explanation}</p>
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="bg-red-100 text-red-700 text-xs px-2.5 py-1 rounded-md font-bold">${q.category}</span>
+            <button onclick="removeMistake(${q.id})" class="text-xs text-slate-400 hover:text-red-500"><i class="fa-solid fa-trash"></i> 移出错题集</button>
+          </div>
+          <h3 class="text-base font-bold text-slate-800">${index + 1}. ${q.question}</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+            ${optionsHTML}
+          </div>
+          ${feedbackHTML}
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function selectMistakeOption(qId, key) {
+      mistakeAnswers[qId] = key;
+      renderMistakes();
+    }
+
+    function removeMistake(qId) {
+      delete mistakeBook[qId];
+      delete mistakeAnswers[qId];
+      localStorage.setItem('mistake_book', JSON.stringify(mistakeBook));
+      renderMistakes();
+    }
+
+    function clearMistakes() {
+      if (confirm("确定要清空所有错题记录吗？")) {
+        mistakeBook = {};
+        mistakeAnswers = {};
+        localStorage.removeItem('mistake_book');
+        renderMistakes();
+      }
+    }
+
+    // 家长设置相关
     function openParentModal() {
       document.getElementById('parent-score-input').value = totalScore;
       document.getElementById('parent-modal').classList.remove('hidden');
@@ -633,6 +713,7 @@
         totalScore = val;
         updateScoreDisplay();
         renderRewards();
+        renderStats();
         alert('总积分已保存修改！');
       } else {
         alert('请输入有效的积分数值！');
@@ -678,6 +759,7 @@
       document.getElementById('edit-reward-id').value = reward.id;
       document.getElementById('edit-reward-title').value = reward.title;
       document.getElementById('edit-reward-cost').value = reward.cost;
+      document.getElementById('edit-reward-icon').value = reward.icon || 'fa-gift';
       document.getElementById('edit-reward-modal').classList.remove('hidden');
     }
 
@@ -689,13 +771,14 @@
       const id = parseInt(document.getElementById('edit-reward-id').value);
       const title = document.getElementById('edit-reward-title').value.trim();
       const cost = parseInt(document.getElementById('edit-reward-cost').value);
+      const icon = document.getElementById('edit-reward-icon').value;
 
       if (!title || isNaN(cost) || cost <= 0) {
         alert('请填写有效的名称和积分！');
         return;
       }
 
-      customRewards = customRewards.map(r => r.id === id ? { ...r, title, cost } : r);
+      customRewards = customRewards.map(r => r.id === id ? { ...r, title, cost, icon } : r);
       localStorage.setItem('custom_rewards', JSON.stringify(customRewards));
       closeEditModal();
       renderRewards();
@@ -726,36 +809,67 @@
     }
 
     function clearAllData() {
-      if (confirm("⚠️ 确定要清空所有数据吗？（总积分清零、清除所有答题记录并恢复默认奖品）")) {
+      if (confirm("⚠️ 确定要清空所有数据吗？（总积分清零、清除所有答题记录、兑换历史、错题集并恢复默认）")) {
         localStorage.clear();
         totalScore = 0;
         submittedToday = false;
         userAnswers = {};
         customRewards = defaultRewards;
+        redemptionHistory = [];
+        dailyRecords = {};
+        mistakeBook = {};
         updateScoreDisplay();
         renderQuiz();
         renderRewards();
+        renderStats();
+        renderMistakes();
         closeParentModal();
         alert('所有数据已恢复重置！');
       }
     }
 
+    // 标签页切换控制
     function switchTab(tab) {
       const quizContainer = document.getElementById('quiz-container');
       const shopContainer = document.getElementById('shop-container');
+      const statsContainer = document.getElementById('stats-container');
+      const mistakesContainer = document.getElementById('mistakes-container');
+
       const quizBtn = document.getElementById('tab-quiz-btn');
       const shopBtn = document.getElementById('tab-shop-btn');
+      const statsBtn = document.getElementById('tab-stats-btn');
+      const mistakesBtn = document.getElementById('tab-mistakes-btn');
+
+      // 隐藏所有
+      quizContainer.classList.add('hidden');
+      shopContainer.classList.add('hidden');
+      statsContainer.classList.add('hidden');
+      mistakesContainer.classList.add('hidden');
+
+      // 重置按钮样式
+      const inactiveClass = "px-5 py-2 rounded-full font-bold text-base shadow-md transition bg-white text-emerald-700 hover:bg-emerald-50";
+      const activeClass = "px-5 py-2 rounded-full font-bold text-base shadow-md transition bg-amber-400 text-amber-950 scale-105";
+
+      quizBtn.className = inactiveClass;
+      shopBtn.className = inactiveClass;
+      statsBtn.className = inactiveClass;
+      mistakesBtn.className = inactiveClass;
 
       if (tab === 'quiz') {
         quizContainer.classList.remove('hidden');
-        shopContainer.classList.add('hidden');
-        quizBtn.className = "px-6 py-2 rounded-full font-bold text-lg shadow-md transition bg-amber-400 text-amber-950 scale-105";
-        shopBtn.className = "px-6 py-2 rounded-full font-bold text-lg shadow-md transition bg-white text-emerald-700 hover:bg-emerald-50";
-      } else {
-        quizContainer.classList.add('hidden');
+        quizBtn.className = activeClass;
+      } else if (tab === 'shop') {
         shopContainer.classList.remove('hidden');
-        shopBtn.className = "px-6 py-2 rounded-full font-bold text-lg shadow-md transition bg-amber-400 text-amber-950 scale-105";
-        quizBtn.className = "px-6 py-2 rounded-full font-bold text-lg shadow-md transition bg-white text-emerald-700 hover:bg-emerald-50";
+        shopBtn.className = activeClass;
+        renderRedemptionHistory();
+      } else if (tab === 'stats') {
+        statsContainer.classList.remove('hidden');
+        statsBtn.className = activeClass;
+        renderStats();
+      } else if (tab === 'mistakes') {
+        mistakesContainer.classList.remove('hidden');
+        mistakesBtn.className = activeClass;
+        renderMistakes();
       }
     }
   </script>
