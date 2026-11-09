@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>二年级每日答题闯关与学习积分系统</title>
-  <!-- Tailwind CSS & Cartoon Font -->
+  <!-- Tailwind CSS & Cartoon Font & Canvas Confetti (用于烟花特效) -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap">
   <style>
     .font-kuaile { font-family: 'ZCOOL KuaiLe', cursive, sans-serif; }
@@ -65,7 +66,7 @@
       <span class="text-4xl">✏️</span>
       <div>
         <h1 class="text-2xl font-bold text-green-700 font-kuaile">二年级学习闯关卡</h1>
-        <p class="text-xs text-gray-500">苏教版同步 · 每日打卡 · 积分兑换</p>
+        <p class="text-xs text-gray-500">苏教版同步 · 每日智能轮换 · 积分兑换</p>
       </div>
     </div>
     <div class="flex items-center gap-4">
@@ -93,7 +94,7 @@
       <div id="parent-settings-content" class="hidden mt-4 pt-4 border-t border-gray-100 space-y-4">
         <!-- 1. 云端同步配置 -->
         <div>
-          <h3 class="text-xs font-bold text-gray-500 mb-2">☁️ 云端自动同步状态 (<span id="auto-sync-status" class="text-green-600">已启用后台同步</span>)</h3>
+          <h3 class="text-xs font-bold text-gray-500 mb-2">☁️ 云端自动同步状态 (<span class="text-green-600">已启用后台静默同步</span>)</h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input type="text" id="sync-key" placeholder="JSONBin Master Key ($2a$10$...)" class="border rounded-xl px-3 py-2 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
             <input type="text" id="sync-id" placeholder="同步标识/学生ID (例: kid_8888)" class="border rounded-xl px-3 py-2 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
@@ -116,7 +117,7 @@
             <button onclick="updateScoreManually()" class="bg-gray-700 hover:bg-gray-800 text-white px-3 py-1 rounded-lg">保存积分</button>
           </div>
           <button onclick="resetTodayStatus()" class="text-red-500 hover:text-red-700 underline text-xs">
-            ⚠️ 重置今日答题状态（方便测试）
+            ⚠️ 重置今日答题状态（方便测试换题）
           </button>
         </div>
       </div>
@@ -175,14 +176,46 @@
   </footer>
 
   <script>
-    const defaultQuizData = [
-      { id: 1, type: 'math', q: '计算算式 45 ➕ 28 ➖ 19 的正确结果是多少？', options: ['A. 54', 'B. 64', 'C. 44', 'D. 73'], ans: 0, parse: '按顺序计算：45+28=73，73-19=54。' },
-      { id: 2, type: 'math', q: '计算算式 5 ✖️ 4 时，用到的乘法口诀是？', options: ['A. 四五二十', 'B. 五五二十五', 'C. 三五十五', 'D. 四六二十四'], ans: 0, parse: '根据口诀“四五二十”计算 5✖️4=20。' },
-      { id: 3, type: 'math', q: '测量数学课本的厚度大约是 1（ ），小明的身高大约是 130（ ）。', options: ['A. 厘米；厘米', 'B. 米；厘米', 'C. 厘米；米', 'D. 米；米'], ans: 0, parse: '课本厚度用“厘米”，身高用“厘米”。' },
-      { id: 4, type: 'chinese', q: '生字“装”的结构和部首是什么？', options: ['A. 上下结构，部首是“衣”', 'B. 左右结构，部首是“壮”', 'C. 半包围结构，部首是“衣”', 'D. 上下结构，部首是“壮”'], ans: 0, parse: '“装”上壮下衣，属于上下结构，部首是“衣”。' },
-      { id: 5, type: 'chinese', q: '补全古诗《梅花》：“遥知不是雪，________________。”', options: ['A. 为有暗香来', 'B. 粒粒皆辛苦', 'C. 乡音无改鬓毛衰', 'D. 处处闻啼鸟'], ans: 0, parse: '出处：王安石《梅花》“遥知不是雪，为有暗香来”。' }
+    // --- 📅 扩展庞大的苏教版二年级题库池（系统会自动按天循环轮换） ---
+    const questionBank = [
+      // 第一组
+      [
+        { id: 1, type: 'math', q: '计算算式 45 ➕ 28 ➖ 19 的正确结果是多少？', options: ['A. 54', 'B. 64', 'C. 44', 'D. 73'], ans: 0, parse: '按顺序计算：45+28=73，73-19=54。' },
+        { id: 2, type: 'math', q: '计算算式 5 ✖️ 4 时，用到的乘法口诀是？', options: ['A. 四五二十', 'B. 五五二十五', 'C. 三五十五', 'D. 四六二十四'], ans: 0, parse: '根据口诀“四五二十”计算 5✖️4=20。' },
+        { id: 3, type: 'math', q: '测量数学课本的厚度大约是 1（ ），小明的身高大约是 130（ ）。', options: ['A. 厘米；厘米', 'B. 米；厘米', 'C. 厘米；米', 'D. 米；米'], ans: 0, parse: '课本厚度用“厘米”，身高用“厘米”。' },
+        { id: 4, type: 'chinese', q: '生字“装”的结构和部首是什么？', options: ['A. 上下结构，部首是“衣”', 'B. 左右结构，部首是“壮”', 'C. 半包围结构，部首是“衣”', 'D. 上下结构，部首是“壮”'], ans: 0, parse: '“装”上壮下衣，属于上下结构，部首是“衣”。' },
+        { id: 5, type: 'chinese', q: '补全古诗《梅花》：“遥知不是雪，________________。”', options: ['A. 为有暗香来', 'B. 粒粒皆辛苦', 'C. 乡音无改鬓毛衰', 'D. 处处闻啼鸟'], ans: 0, parse: '出处：王安石《梅花》“遥知不是雪，为有暗香来”。' }
+      ],
+      // 第二组
+      [
+        { id: 6, type: 'math', q: '计算算式 62 ➖ 18 ➕ 25 的正确结果是多少？', options: ['A. 69', 'B. 59', 'C. 79', 'D. 44'], ans: 0, parse: '从左到右：62-18=44，44+25=69。' },
+        { id: 7, type: 'math', q: '计算 3 ✖️ 6 = ? 时，用到的口诀是？', options: ['A. 三六十八', 'B. 四六二十四', 'C. 二六十二', 'D. 五六三十'], ans: 0, parse: '计算 3 ✖️ 6 使用口诀“三六十八”。' },
+        { id: 8, type: 'math', q: '教室门的高度大约是 2（ ），一支铅笔的长大约是 18（ ）。', options: ['A. 米；厘米', 'B. 厘米；米', 'C. 米；米', 'D. 厘米；厘米'], ans: 0, parse: '教室门高用“米”，铅笔长用“厘米”。' },
+        { id: 9, type: 'chinese', q: '下列词语中，带有“足”字旁且与脚部动作有关的字是？', options: ['A. 跑', 'B. 树', 'C. 明', 'D. 惊'], ans: 0, parse: '“跑”字是足字旁，表示用脚奔跑。' },
+        { id: 10, type: 'chinese', q: '《层云山》或经典写景诗句中，描写瀑布的诗句是：“飞流直下三千尺，________________。”', options: ['A. 疑是银河落九天', 'B. 春风吹又生', 'C. 处处闻啼鸟', 'D. 门泊东吴万里船'], ans: 0, parse: '李白《望庐山瀑布》名句：“飞流直下三千尺，疑是银河落九天”。' }
+      ],
+      // 第三组
+      [
+        { id: 11, type: 'math', q: '公园里有 3 行柳树，每行 8 棵，一共有多少棵柳树？', options: ['A. 24棵', 'B. 11棵', 'C. 21棵', 'D. 18棵'], ans: 0, parse: '求3个8是多少，用乘法：3 ✖️ 8 = 24棵。' },
+        { id: 12, type: 'math', q: '算式 4 ✖️ 7 ➕ 5 的计算结果是？', options: ['A. 33', 'B. 28', 'C. 35', 'D. 32'], ans: 0, parse: '先算乘法 4✖️7=28，再算加法 28+5=33。' },
+        { id: 13, type: 'math', q: '1米等于多少厘米？', options: ['A. 100厘米', 'B. 10厘米', 'C. 1000厘米', 'D. 50厘米'], ans: 0, parse: '长度单位换算基础：1米 = 100厘米。' },
+        { id: 14, type: 'chinese', q: '“群”字的部首是什么？', options: ['A. 羊字旁', 'B. くん', 'C. 土字旁', 'D. 左右结构'], ans: 0, parse: '“群”由君和羊组成，部首是羊字旁。' },
+        { id: 15, type: 'chinese', q: '补充诗句：“白日依山尽，________________。”', options: ['A. 黄河入海流', 'B. 欲穷千里目', 'C. 更上一层楼', 'D. 孤帆远影碧空尽'], ans: 0, parse: '王之涣《登鹳雀楼》：“白日依山尽，黄河入海流。”' }
+      ]
     ];
 
+    // --- 根据今天日期自动挑选今日题目 ---
+    function getTodayQuiz() {
+      const now = new Date();
+      // 用当前日期的天数作为索引在题库中循环轮换
+      const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+      const index = dayOfYear % questionBank.length;
+      return questionBank[index];
+    }
+
+    let currentQuizData = getTodayQuiz();
+
+    // --- 应用全局状态 ---
     let appState = {
       score: 0,
       mistakes: [],
@@ -230,7 +263,7 @@
 
     function renderQuiz() {
       const list = document.getElementById('questions-list');
-      list.innerHTML = defaultQuizData.map((q, idx) => `
+      list.innerHTML = currentQuizData.map((q, idx) => `
         <div class="quiz-card p-4 rounded-xl bg-gray-50 border border-gray-100">
           <h3 class="font-bold text-gray-800 mb-3">${idx + 1}. [${q.type === 'math' ? '数学' : '语文'}] ${q.q}</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -245,7 +278,7 @@
       `).join('');
 
       const today = new Date().toLocaleDateString();
-      document.getElementById('quiz-date-title').innerText = `今日核心练习 (${today})`;
+      document.getElementById('quiz-date-title').innerText = `今日核心练习 (${today}) - 每日自动更新`;
     }
 
     function renderState() {
@@ -274,16 +307,37 @@
       saveLocalStorage();
     }
 
-    // --- 🎯 答题提交并【自动后台静默同步】 ---
+    // --- 🎉 满分烟花特效函数 ---
+    function triggerFireworks() {
+      const duration = 2.5 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 999 };
+
+      function randomInRange(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+
+      const interval = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+        const particleCount = 50 * (timeLeft / duration);
+        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+      }, 250);
+    }
+
+    // --- 🎯 答题提交与结算 ---
     function submitQuiz() {
       const today = new Date().toLocaleDateString();
       if (appState.completedDates.includes(today)) {
-        alert('今天已经完成答题并领取过积分了哦！明天继续加油！');
+        alert('今天已经完成答题并领取过积分了哦！明天换新题目再来吧！');
         return;
       }
 
       let earned = 0;
-      defaultQuizData.forEach(q => {
+      currentQuizData.forEach(q => {
         const selected = document.querySelector(`input[name="q_${q.id}"]:checked`);
         if (selected && parseInt(selected.value) === q.ans) {
           earned += 1;
@@ -298,9 +352,15 @@
       appState.completedDates.push(today);
       renderState();
       
-      alert(`答题完成！本次获得 ${earned} 积分，累计积分：${appState.score}`);
+      // 如果拿到满分（5分），触发炫酷烟花庆祝！
+      if (earned === 5) {
+        triggerFireworks();
+        alert(`太厉害了！全对！本次获得满分 5 积分，累计积分：${appState.score} 🏆`);
+      } else {
+        alert(`答题完成！本次获得 ${earned} 积分，累计积分：${appState.score}`);
+      }
 
-      // 🚀 核心：如果家长已经配置了 Key 和 ID，在后台静默同步，不弹任何烦人提示
+      // 后台静默同步云端
       if (appState.syncKey && appState.syncId) {
         uploadToCloud(true); 
       }
@@ -324,7 +384,6 @@
           appState.score -= r.cost;
           renderState();
           alert('兑换成功！去找家长兑现承诺吧！');
-          // 兑换奖品后也自动后台同步一次
           if (appState.syncKey && appState.syncId) { uploadToCloud(true); }
         }
       } else {
@@ -346,10 +405,9 @@
       const today = new Date().toLocaleDateString();
       appState.completedDates = appState.completedDates.filter(d => d !== today);
       saveLocalStorage();
-      alert('已重置今日答题状态，现在可以重新测试了！');
+      alert('已重置今日答题状态，刷新页面即可重新测试！');
     }
 
-    // --- ☁️ 云端 API 核心同步逻辑 (支持 silent 静默后台上传) ---
     async function uploadToCloud(silent = false) {
       const key = document.getElementById('sync-key').value.trim();
       const syncId = document.getElementById('sync-id').value.trim();
@@ -360,7 +418,7 @@
       }
 
       try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b`, {
+        await fetch(`https://api.jsonbin.io/v3/b`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -369,12 +427,6 @@
           },
           body: JSON.stringify(appState)
         });
-
-        if (res.ok) {
-          if (!silent) alert('手动上传云端成功！');
-        } else {
-          if (!silent) alert('上传失败，请检查 Key 是否正确。');
-        }
       } catch (e) {
         if (!silent) alert('网络连接错误，同步失败。');
       }
