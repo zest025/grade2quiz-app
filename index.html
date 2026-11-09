@@ -37,15 +37,22 @@
         width: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
-      }
-      .quiz-card {
-        border: none !important;
         box-shadow: none !important;
-        padding: 4px 0 !important;
-        margin-bottom: 12px !important;
-        break-inside: avoid;
+        border: none !important;
       }
-      h3 {
+      #print-mistakes-area {
+        display: block !important;
+        width: 100% !important;
+      }
+      .quiz-card, .print-mistake-card {
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+        padding: 12px !important;
+        margin-bottom: 16px !important;
+        break-inside: avoid;
+        background: white !important;
+      }
+      h2, h3 {
         font-size: 14pt !important;
         color: black !important;
       }
@@ -53,7 +60,9 @@
         font-size: 12pt !important;
         border: 1px solid #ccc !important;
         break-inside: avoid;
-        margin-bottom: 4px !important;
+        margin-bottom: 6px !important;
+        display: block !important;
+        padding: 6px !important;
       }
     }
   </style>
@@ -66,15 +75,21 @@
       <span class="text-4xl">✏️</span>
       <div>
         <h1 class="text-2xl font-bold text-green-700 font-kuaile">二年级学习闯关卡</h1>
-        <p class="text-xs text-gray-500">苏教版同步 · 每日智能轮换 · 积分兑换</p>
+        <p class="text-xs text-gray-500">苏教版同步 · 连续打卡 · 错题打印复习</p>
       </div>
     </div>
-    <div class="flex items-center gap-4">
-      <div class="bg-yellow-100 border border-yellow-300 px-4 py-2 rounded-xl text-center">
-        <span class="text-xs text-yellow-700 block">当前积累积分</span>
-        <span id="current-score" class="text-2xl font-bold text-yellow-600 font-kuaile">0</span>
+    <div class="flex items-center gap-3">
+      <!-- 连续打卡天数看板 -->
+      <div class="bg-orange-50 border border-orange-200 px-3 py-2 rounded-xl text-center">
+        <span class="text-[10px] text-orange-600 block">🔥 连续打卡</span>
+        <span id="streak-days" class="text-xl font-bold text-orange-500 font-kuaile">0 天</span>
       </div>
-      <button onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-xl text-sm shadow transition">
+      <!-- 积分看板 -->
+      <div class="bg-yellow-100 border border-yellow-300 px-3 py-2 rounded-xl text-center">
+        <span class="text-[10px] text-yellow-700 block">🌟 当前积分</span>
+        <span id="current-score" class="text-xl font-bold text-yellow-600 font-kuaile">0</span>
+      </div>
+      <button onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-2.5 rounded-xl text-xs shadow transition">
         🖨️ 打印今日试卷
       </button>
     </div>
@@ -82,17 +97,26 @@
 
   <main class="max-w-4xl mx-auto w-full space-y-6">
 
-    <!-- ⚙️ 家长控制与云端设置面板 -->
+    <!-- ⚙️ 家长控制与云端设置面板（含密码锁保护） -->
     <section id="parent-panel" class="bg-white p-5 rounded-2xl shadow-sm border border-green-100 no-print">
       <div class="flex justify-between items-center cursor-pointer" onclick="toggleParentSettings()">
         <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2 font-kuaile">
-          <span>⚙️</span> 家长控制与云端同步设置
+          <span>🔒</span> 家长控制与云端同步设置 (需密码)
         </h2>
         <span id="toggle-icon" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">展开设置 🔽</span>
       </div>
 
       <div id="parent-settings-content" class="hidden mt-4 pt-4 border-t border-gray-100 space-y-4">
-        <!-- 1. 云端同步配置 -->
+        <!-- 密码修改设置 -->
+        <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-gray-700">修改家长密码：</span>
+            <input type="text" id="new-password-input" placeholder="默认密码: 8888" class="border rounded-lg px-2 py-1 w-32 text-xs">
+            <button onclick="saveNewPassword()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg">更新密码</button>
+          </div>
+          <span class="text-gray-400 text-[11px]">初始默认密码为：<strong>8888</strong></span>
+        </div>
+
         <div>
           <h3 class="text-xs font-bold text-gray-500 mb-2">☁️ 云端自动同步状态 (<span class="text-green-600">已启用后台静默同步</span>)</h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -109,7 +133,6 @@
           </div>
         </div>
 
-        <!-- 2. 家长手动调整积分与数据重置 -->
         <div class="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div class="flex items-center gap-2">
             <span class="font-bold text-gray-700">手动修改积分：</span>
@@ -127,14 +150,15 @@
     <section id="quiz-container" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
       <div class="flex justify-between items-center mb-4 no-print border-b pb-3">
         <h2 class="text-xl font-bold text-gray-800 font-kuaile" id="quiz-date-title">今日核心练习</h2>
-        <span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-bold">每题 1 分 · 共 5 分</span>
+        <span id="quiz-badge" class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-bold">每题 1 分 · 共 5 分</span>
       </div>
       
       <div id="questions-list" class="space-y-6">
         <!-- 动态渲染题目 -->
       </div>
 
-      <div class="mt-6 pt-4 border-t border-gray-100 flex justify-end no-print">
+      <div class="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center no-print">
+        <div id="extra-action-area"></div>
         <button onclick="submitQuiz()" id="submit-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition text-lg font-kuaile">
           提交答案并领取积分 🚀
         </button>
@@ -143,28 +167,39 @@
 
     <!-- 📊 统计与错题集 -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
-      <!-- 错题本 -->
-      <section id="mistakes-container" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-        <h3 class="text-lg font-bold text-red-600 mb-3 flex items-center gap-2 font-kuaile">
-          <span>📖</span> 错题自动收集本
-        </h3>
-        <div id="mistakes-list" class="space-y-2 text-sm text-gray-600 max-h-48 overflow-y-auto">
-          <p class="text-gray-400 italic">太棒了，目前没有累积的错题！</p>
+      <!-- 📖 错题本 -->
+      <section id="mistakes-container" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+        <div>
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-lg font-bold text-red-600 flex items-center gap-2 font-kuaile">
+              <span>📖</span> 错题自动收集本
+            </h3>
+            <div class="flex gap-1.5">
+              <button id="print-mistakes-btn" onclick="printMistakesPaper()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2.5 py-1.5 rounded-lg font-bold shadow transition">
+                🖨️ 打印错题卷
+              </button>
+              <button id="start-mistake-test-btn" onclick="startMistakeTest()" class="hidden bg-red-500 hover:bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded-lg font-bold shadow transition">
+                🎯 错题重测
+              </button>
+            </div>
+          </div>
+          <div id="mistakes-list" class="space-y-2 text-sm text-gray-600 max-h-48 overflow-y-auto">
+            <p class="text-gray-400 italic">太棒了，目前没有累积的错题！</p>
+          </div>
         </div>
+        <p class="text-[11px] text-gray-400 mt-3 pt-2 border-t">提示：答对错题后，系统会自动将其从错题本中移除。</p>
       </section>
 
-      <!-- 🎁 家长积分心愿兑换商城（含新增、编辑、删除功能） -->
+      <!-- 🎁 家长积分心愿兑换商城 -->
       <section id="shop-container" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
         <h3 class="text-lg font-bold text-yellow-600 mb-3 flex items-center gap-2 font-kuaile">
           <span>🎁</span> 积分心愿兑换商城
         </h3>
-        <!-- 添加奖励表单 -->
         <div class="flex gap-2 mb-3">
           <input type="text" id="reward-name" placeholder="心愿名称 (例: 选一本绘本)" class="border rounded-xl px-3 py-2 text-xs flex-1 focus:outline-none focus:ring-2 focus:ring-yellow-400">
           <input type="number" id="reward-cost" placeholder="积分" class="border rounded-xl px-3 py-2 text-xs w-20 focus:outline-none focus:ring-2 focus:ring-yellow-400">
           <button onclick="addReward()" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-4 py-2 rounded-xl font-bold shadow transition">添加</button>
         </div>
-        <!-- 奖品列表 -->
         <div id="rewards-list" class="space-y-2 max-h-40 overflow-y-auto text-xs">
           <!-- 动态渲染奖励 -->
         </div>
@@ -172,6 +207,9 @@
     </div>
 
   </main>
+
+  <!-- 🖨️ 专门用于错题打印的隐藏容器 -->
+  <div id="print-mistakes-area" class="hidden"></div>
 
   <footer class="max-w-4xl mx-auto w-full text-center text-xs text-gray-400 mt-8 no-print">
     二年级学习辅助系统 · 保持连贯打卡与练习
@@ -182,7 +220,7 @@
       [
         { id: 1, type: 'math', q: '计算算式 45 ➕ 28 ➖ 19 的正确结果是多少？', options: ['A. 54', 'B. 64', 'C. 44', 'D. 73'], ans: 0, parse: '按顺序计算：45+28=73，73-19=54。' },
         { id: 2, type: 'math', q: '计算算式 5 ✖️ 4 时，用到的乘法口诀是？', options: ['A. 四五二十', 'B. 五五二十五', 'C. 三五十五', 'D. 四六二十四'], ans: 0, parse: '根据口诀“四五二十”计算 5✖️4=20。' },
-        { id: 3, type: 'math', q: '测量数学课本 the 厚度大约是 1（ ），小明的身高大约是 130（ ）。', options: ['A. 厘米；厘米', 'B. 米；厘米', 'C. 厘米；米', 'D. 米；米'], ans: 0, parse: '课本厚度用“厘米”，身高用“厘米”。' },
+        { id: 3, type: 'math', q: '测量数学课本的厚度大约是 1（ ），小明的身高大约是 130（ ）。', options: ['A. 厘米；厘米', 'B. 米；厘米', 'C. 厘米；米', 'D. 米；米'], ans: 0, parse: '课本厚度用“厘米”，身高用“厘米”。' },
         { id: 4, type: 'chinese', q: '生字“装”的结构和部首是什么？', options: ['A. 上下结构，部首是“衣”', 'B. 左右结构，部首是“壮”', 'C. 半包围结构，部首是“衣”', 'D. 上下结构，部首是“壮”'], ans: 0, parse: '“装”上壮下衣，属于上下结构，部首是“衣”。' },
         { id: 5, type: 'chinese', q: '补全古诗《梅花》：“遥知不是雪，________________。”', options: ['A. 为有暗香来', 'B. 粒粒皆辛苦', 'C. 乡音无改鬓毛衰', 'D. 处处闻啼鸟'], ans: 0, parse: '出处：王安石《梅花》“遥知不是雪，为有暗香来”。' }
       ],
@@ -209,9 +247,13 @@
     }
 
     let currentQuizData = getTodayQuiz();
+    let isMistakeMode = false;
 
     let appState = {
       score: 0,
+      streak: 0,
+      lastCheckInDate: '',
+      parentPin: '8888', // 默认家长密码
       mistakes: [],
       rewards: [
         { name: '看动画片 30 分钟', cost: 10 },
@@ -225,21 +267,10 @@
 
     window.onload = function() {
       loadLocalStorage();
+      checkAndUpdateStreak();
       renderQuiz();
       renderState();
     };
-
-    function toggleParentSettings() {
-      const content = document.getElementById('parent-settings-content');
-      const icon = document.getElementById('toggle-icon');
-      if (content.classList.contains('hidden')) {
-        content.classList.remove('hidden');
-        icon.innerText = '收起设置 🔼';
-      } else {
-        content.classList.add('hidden');
-        icon.innerText = '展开设置 🔽';
-      }
-    }
 
     function loadLocalStorage() {
       const saved = localStorage.getItem('grade2_app_state');
@@ -248,6 +279,7 @@
       }
       document.getElementById('sync-key').value = appState.syncKey || '';
       document.getElementById('sync-id').value = appState.syncId || '';
+      document.getElementById('new-password-input').value = appState.parentPin || '8888';
     }
 
     function saveLocalStorage() {
@@ -256,33 +288,126 @@
       localStorage.setItem('grade2_app_state', JSON.stringify(appState));
     }
 
+    // --- 🔒 家长控制面板密码验证逻辑 ---
+    function toggleParentSettings() {
+      const content = document.getElementById('parent-settings-content');
+      const icon = document.getElementById('toggle-icon');
+
+      if (content.classList.contains('hidden')) {
+        // 展开前要求输入密码
+        const inputPin = prompt('🔒 此为家长控制面板，请输入家长管理密码：', '');
+        if (inputPin === null) return; // 取消
+
+        if (inputPin.trim() === (appState.parentPin || '8888')) {
+          content.classList.remove('hidden');
+          icon.innerText = '收起设置 🔼';
+        } else {
+          alert('❌ 密码错误，无法打开家长设置！');
+        }
+      } else {
+        content.classList.add('hidden');
+        icon.innerText = '展开设置 🔽';
+      }
+    }
+
+    function saveNewPassword() {
+      const newPin = document.getElementById('new-password-input').value.trim();
+      if (newPin) {
+        appState.parentPin = newPin;
+        saveLocalStorage();
+        alert('✅ 家长管理密码已成功修改！');
+      } else {
+        alert('请输入有效的密码！');
+      }
+    }
+
+    function checkAndUpdateStreak() {
+      const todayStr = new Date().toDateString();
+      if (appState.lastCheckInDate) {
+        const lastDate = new Date(appState.lastCheckInDate);
+        const todayDate = new Date(todayStr);
+        const diffDays = Math.round((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 1 && !appState.completedDates.includes(new Date().toLocaleDateString())) {
+          appState.streak = 0;
+        }
+      }
+      document.getElementById('streak-days').innerText = `${appState.streak || 0} 天`;
+    }
+
     function renderQuiz() {
       const list = document.getElementById('questions-list');
-      list.innerHTML = currentQuizData.map((q, idx) => `
-        <div class="quiz-card p-4 rounded-xl bg-gray-50 border border-gray-100">
-          <h3 class="font-bold text-gray-800 mb-3">${idx + 1}. [${q.type === 'math' ? '数学' : '语文'}] ${q.q}</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            ${q.options.map((opt, oIdx) => `
-              <label class="flex items-center gap-2 p-2.5 rounded-lg border bg-white cursor-pointer hover:bg-green-50 transition text-sm">
-                <input type="radio" name="q_${q.id}" value="${oIdx}" class="text-green-600 focus:ring-green-500">
-                <span>${opt}</span>
-              </label>
-            `).join('')}
-          </div>
-        </div>
-      `).join('');
+      const titleEl = document.getElementById('quiz-date-title');
+      const badgeEl = document.getElementById('quiz-badge');
+      const extraArea = document.getElementById('extra-action-area');
+      const submitBtn = document.getElementById('submit-btn');
 
-      const today = new Date().toLocaleDateString();
-      document.getElementById('quiz-date-title').innerText = `今日核心练习 (${today}) - 每日自动更新`;
+      if (isMistakeMode) {
+        titleEl.innerText = `🎯 错题专项集中重测 (${appState.mistakes.length}题)`;
+        badgeEl.innerText = `错题重测模式`;
+        submitBtn.innerText = `提交错题重测结果 🚀`;
+        extraArea.innerHTML = `<button onclick="exitMistakeTest()" class="text-gray-500 hover:text-gray-800 underline text-xs">← 返回今日正常打卡</button>`;
+
+        if (appState.mistakes.length === 0) {
+          list.innerHTML = `<div class="text-center py-8 text-gray-500">太棒了！错题已经全部清空啦！</div>`;
+          submitBtn.classList.add('hidden');
+          return;
+        } else {
+          submitBtn.classList.remove('hidden');
+        }
+
+        list.innerHTML = appState.mistakes.map((q, idx) => `
+          <div class="quiz-card p-4 rounded-xl bg-red-50 border border-red-100">
+            <h3 class="font-bold text-gray-800 mb-3">${idx + 1}. [${q.type === 'math' ? '数学' : '语文'}] ${q.q}</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              ${q.options.map((opt, oIdx) => `
+                <label class="flex items-center gap-2 p-2.5 rounded-lg border bg-white cursor-pointer hover:bg-green-50 transition text-sm">
+                  <input type="radio" name="mistake_q_${q.id}" value="${oIdx}" class="text-red-600 focus:ring-red-500">
+                  <span>${opt}</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+
+      } else {
+        const today = new Date().toLocaleDateString();
+        titleEl.innerText = `今日核心练习 (${today}) - 每日自动更新`;
+        badgeEl.innerText = `每题 1 分 · 共 5 分`;
+        submitBtn.innerText = `提交答案并领取积分 🚀`;
+        submitBtn.classList.remove('hidden');
+        extraArea.innerHTML = ``;
+
+        list.innerHTML = currentQuizData.map((q, idx) => `
+          <div class="quiz-card p-4 rounded-xl bg-gray-50 border border-gray-100">
+            <h3 class="font-bold text-gray-800 mb-3">${idx + 1}. [${q.type === 'math' ? '数学' : '语文'}] ${q.q}</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              ${q.options.map((opt, oIdx) => `
+                <label class="flex items-center gap-2 p-2.5 rounded-lg border bg-white cursor-pointer hover:bg-green-50 transition text-sm">
+                  <input type="radio" name="q_${q.id}" value="${oIdx}" class="text-green-600 focus:ring-green-500">
+                  <span>${opt}</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+      }
     }
 
     function renderState() {
       document.getElementById('current-score').innerText = appState.score;
+      document.getElementById('streak-days').innerText = `${appState.streak || 0} 天`;
       
       const mList = document.getElementById('mistakes-list');
+      const startTestBtn = document.getElementById('start-mistake-test-btn');
+      const printMistakesBtn = document.getElementById('print-mistakes-btn');
+
       if (appState.mistakes.length === 0) {
         mList.innerHTML = `<p class="text-gray-400 italic">太棒了，目前没有累积的错题！</p>`;
+        startTestBtn.classList.add('hidden');
+        printMistakesBtn.classList.add('hidden');
       } else {
+        startTestBtn.classList.remove('hidden');
+        printMistakesBtn.classList.remove('hidden');
         mList.innerHTML = appState.mistakes.map((m, i) => `
           <div class="p-2 bg-red-50 rounded border border-red-100 text-xs">
             <span class="font-bold text-red-700">错题 ${i+1}:</span> ${m.q} 
@@ -291,7 +416,6 @@
         `).join('');
       }
 
-      // 🎁 渲染奖励列表（支持兑换、编辑、删除功能）
       const rList = document.getElementById('rewards-list');
       rList.innerHTML = appState.rewards.map((r, i) => `
         <div class="flex justify-between items-center p-2 bg-yellow-50 rounded border border-yellow-100">
@@ -299,7 +423,7 @@
           <div class="flex gap-1">
             <button onclick="redeemReward(${i})" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2.5 py-1 rounded text-xs font-bold transition">兑换</button>
             <button onclick="editReward(${i})" class="bg-blue-100 hover:bg-blue-500 hover:text-white text-blue-600 px-2.5 py-1 rounded text-xs transition">✏️ 编辑</button>
-            <button onclick="deleteReward(${i})" class="bg-gray-200 hover:bg-red-500 hover:text-white text-gray-600 px-2.5 py-1 rounded text-xs transition" title="删除该奖品">×</button>
+            <button onclick="deleteReward(${i})" class="bg-gray-200 hover:bg-red-500 hover:text-white text-gray-600 px-2 py-1 rounded text-xs transition" title="删除">×</button>
           </div>
         </div>
       `).join('');
@@ -307,14 +431,49 @@
       saveLocalStorage();
     }
 
-    // 🎉 满分烟花特效
+    function printMistakesPaper() {
+      if (appState.mistakes.length === 0) {
+        alert('当前没有错题可以打印！');
+        return;
+      }
+      const printArea = document.getElementById('print-mistakes-area');
+      printArea.innerHTML = `
+        <div style="font-family: sans-serif; padding: 20px;">
+          <h2 style="text-align: center; font-size: 18pt; margin-bottom: 5px;">二年级数学与语文错题专项巩固卷</h2>
+          <p style="text-align: center; font-size: 10pt; color: #666; margin-bottom: 20px;">姓名：________ 日期：________ 得分：________</p>
+          ${appState.mistakes.map((q, idx) => `
+            <div class="print-mistake-card" style="margin-bottom: 20px; page-break-inside: avoid;">
+              <p style="font-weight: bold; font-size: 12pt; margin-bottom: 8px;">${idx + 1}. [${q.type === 'math' ? '数学' : '语文'}] ${q.q}</p>
+              <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 15px;">
+                ${q.options.map(opt => `<div style="font-size: 11pt; border: 1px solid #ccc; padding: 6px 10px; border-radius: 4px;">${opt}</div>`).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      window.print();
+    }
+
+    function startMistakeTest() {
+      if (appState.mistakes.length === 0) {
+        alert('当前没有错题需要复习！');
+        return;
+      }
+      isMistakeMode = true;
+      renderQuiz();
+      window.scrollTo({ top: 200, behavior: 'smooth' });
+    }
+
+    function exitMistakeTest() {
+      isMistakeMode = false;
+      renderQuiz();
+    }
+
     function triggerFireworks() {
       const duration = 2.5 * 1000;
       const animationEnd = Date.now() + duration;
       const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 999 };
-
       function randomInRange(min, max) { return Math.random() * (max - min) + min; }
-
       const interval = setInterval(function() {
         const timeLeft = animationEnd - Date.now();
         if (timeLeft <= 0) return clearInterval(interval);
@@ -325,39 +484,73 @@
     }
 
     function submitQuiz() {
-      const today = new Date().toLocaleDateString();
-      if (appState.completedDates.includes(today)) {
-        alert('今天已经完成答题并领取过积分了哦！明天换新题目再来吧！');
-        return;
-      }
+      if (isMistakeMode) {
+        let stillWrong = [];
+        let clearedCount = 0;
 
-      let earned = 0;
-      currentQuizData.forEach(q => {
-        const selected = document.querySelector(`input[name="q_${q.id}"]:checked`);
-        if (selected && parseInt(selected.value) === q.ans) {
-          earned += 1;
-        } else {
-          if (!appState.mistakes.some(m => m.id === q.id)) {
-            appState.mistakes.push(q);
+        appState.mistakes.forEach(q => {
+          const selected = document.querySelector(`input[name="mistake_q_${q.id}"]:checked`);
+          if (selected && parseInt(selected.value) === q.ans) {
+            clearedCount++;
+          } else {
+            stillWrong.push(q);
           }
+        });
+
+        appState.mistakes = stillWrong;
+        renderState();
+        renderQuiz();
+
+        if (clearedCount > 0) {
+          triggerFireworks();
+          alert(`太棒了！本次成功攻克并消灭了 ${clearedCount} 道错题！`);
+        } else {
+          alert('这次错题还没有完全答对哦，再看一看解析重新复习一下吧！');
         }
-      });
 
-      appState.score += earned;
-      appState.completedDates.push(today);
-      renderState();
-      
-      if (earned === 5) {
-        triggerFireworks();
-        alert(`太厉害了！全对！本次获得满分 5 积分，累计积分：${appState.score} 🏆`);
+        if (appState.syncKey && appState.syncId) { uploadToCloud(true); }
+
       } else {
-        alert(`答题完成！本次获得 ${earned} 积分，累计积分：${appState.score}`);
-      }
+        const today = new Date().toLocaleDateString();
+        if (appState.completedDates.includes(today)) {
+          alert('今天已经完成答题并领取过积分了哦！明天换新题目再来吧！');
+          return;
+        }
 
-      if (appState.syncKey && appState.syncId) { uploadToCloud(true); }
+        let earned = 0;
+        currentQuizData.forEach(q => {
+          const selected = document.querySelector(`input[name="q_${q.id}"]:checked`);
+          if (selected && parseInt(selected.value) === q.ans) {
+            earned += 1;
+          } else {
+            if (!appState.mistakes.some(m => m.id === q.id)) {
+              appState.mistakes.push(q);
+            }
+          }
+        });
+
+        appState.score += earned;
+        appState.completedDates.push(today);
+
+        const nowStr = new Date().toDateString();
+        if (appState.lastCheckInDate !== nowStr) {
+          appState.streak = (appState.streak || 0) + 1;
+          appState.lastCheckInDate = nowStr;
+        }
+
+        renderState();
+        
+        if (earned === 5) {
+          triggerFireworks();
+          alert(`太厉害了！全对！本次获得满分 5 积分，累计积分：${appState.score} 🏆`);
+        } else {
+          alert(`答题完成！本次获得 ${earned} 积分，累计积分：${appState.score}`);
+        }
+
+        if (appState.syncKey && appState.syncId) { uploadToCloud(true); }
+      }
     }
 
-    // --- 🎁 新增、编辑、删除心愿奖励 ---
     function addReward() {
       const nameInput = document.getElementById('reward-name');
       const costInput = document.getElementById('reward-cost');
@@ -378,12 +571,11 @@
     function editReward(idx) {
       const r = appState.rewards[idx];
       const newName = prompt('修改心愿名称：', r.name);
-      if (newName === null) return; // 取消
-      
+      if (newName === null) return;
       const newCostStr = prompt('修改所需积分：', r.cost);
-      if (newCostStr === null) return; // 取消
-
+      if (newCostStr === null) return;
       const newCost = parseInt(newCostStr);
+
       if (newName.trim() && !isNaN(newCost) && newCost > 0) {
         appState.rewards[idx] = { name: newName.trim(), cost: newCost };
         renderState();
