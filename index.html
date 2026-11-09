@@ -123,7 +123,7 @@
           <span class="text-gray-400 text-[11px]">初始密码：<strong>8888</strong></span>
         </div>
 
-        <!-- 🎁 家长专享：心愿奖品统一管理区（添加 + 编辑 + 删除 在同一块页面） -->
+        <!-- 🎁 家长专享：心愿奖品统一管理区（添加 + 直接内联修改名称与积分 + 删除） -->
         <div class="bg-yellow-50 p-3.5 rounded-xl border border-yellow-200 space-y-3">
           <h3 class="text-xs font-bold text-yellow-800 flex items-center gap-1">
             <span>🎁</span> 家长专享：心愿奖品统一管理区
@@ -134,7 +134,7 @@
             <input type="number" id="reward-cost" placeholder="积分" class="border rounded-xl px-3 py-1.5 text-xs w-20 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white">
             <button onclick="addReward()" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-4 py-1.5 rounded-xl font-bold shadow transition whitespace-nowrap">➕ 添加奖品</button>
           </div>
-          <!-- 现有奖品列表管理（直接支持在线编辑/删除） -->
+          <!-- 现有奖品列表管理 -->
           <div id="parent-rewards-manage-list" class="space-y-2 max-h-48 overflow-y-auto text-xs border-t border-yellow-200 pt-2">
             <!-- 动态渲染家长端管理列表 -->
           </div>
@@ -213,7 +213,7 @@
         <p class="text-[11px] text-gray-400 mt-3 pt-2 border-t">提示：答对错题后，系统会自动将其从错题本中移除。</p>
       </section>
 
-      <!-- 🎁 孩子端积分心愿兑换商城（纯干净兑换界面） -->
+      <!-- 🎁 孩子端积分心愿兑换商城 -->
       <section id="shop-container" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
         <div class="flex justify-between items-center mb-3">
           <h3 class="text-base sm:text-lg font-bold text-yellow-600 flex items-center gap-2 font-kuaile">
@@ -272,6 +272,7 @@
 
     let currentQuizData = getTodayQuiz();
     let isMistakeMode = false;
+    let editingRewardIndex = -1; // 当前正在内联编辑的奖品索引 (-1 表示未编辑)
 
     let appState = {
       score: 0,
@@ -417,7 +418,6 @@
       document.getElementById('current-score').innerText = appState.score;
       document.getElementById('streak-days').innerText = `${appState.streak || 0} 天`;
       
-      // 错题本渲染
       const mList = document.getElementById('mistakes-list');
       const startTestBtn = document.getElementById('start-mistake-test-btn');
       const printMistakesBtn = document.getElementById('print-mistakes-btn');
@@ -437,7 +437,7 @@
         `).join('');
       }
 
-      // 🎁 1. 孩子端列表（纯干净兑换）
+      // 🎁 1. 孩子端列表
       const rList = document.getElementById('rewards-list');
       rList.innerHTML = appState.rewards.map((r, i) => `
         <div class="flex justify-between items-center p-2.5 bg-yellow-50 rounded border border-yellow-100">
@@ -446,21 +446,36 @@
         </div>
       `).join('');
 
-      // 🎁 2. 家长端管理列表（在同一页面区域集中显示编辑与删除）
+      // 🎁 2. 家长端统一管理列表（支持内联直接修改名称与积分）
       const pManageList = document.getElementById('parent-rewards-manage-list');
       if (pManageList) {
         if (appState.rewards.length === 0) {
           pManageList.innerHTML = `<p class="text-gray-400 italic text-[11px]">暂无心愿奖品，请在上方输入框添加。</p>`;
         } else {
-          pManageList.innerHTML = appState.rewards.map((r, i) => `
-            <div class="flex justify-between items-center p-2 bg-white rounded border border-yellow-200">
-              <span class="font-medium text-gray-800">${i + 1}. ${r.name} <strong class="text-yellow-600">(${r.cost}分)</strong></span>
-              <div class="flex gap-1.5">
-                <button onclick="editReward(${i})" class="bg-blue-50 hover:bg-blue-500 hover:text-white text-blue-600 px-2.5 py-1 rounded border border-blue-200 text-xs transition">✏️ 编辑</button>
-                <button onclick="deleteReward(${i})" class="bg-red-50 hover:bg-red-500 hover:text-white text-red-600 px-2.5 py-1 rounded border border-red-200 text-xs transition">🗑️ 删除</button>
-              </div>
-            </div>
-          `).join('');
+          pManageList.innerHTML = appState.rewards.map((r, i) => {
+            if (editingRewardIndex === i) {
+              // 编辑状态：展示输入框供同时修改名称和积分
+              return `
+                <div class="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-300">
+                  <input type="text" id="edit-reward-name-${i}" value="${r.name}" class="border rounded px-2 py-1 text-xs flex-1">
+                  <input type="number" id="edit-reward-cost-${i}" value="${r.cost}" class="border rounded px-2 py-1 text-xs w-16">
+                  <button onclick="saveRewardEdit(${i})" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded text-xs font-bold">保存</button>
+                  <button onclick="cancelRewardEdit()" class="bg-gray-300 text-gray-700 px-2 py-1 rounded text-xs">取消</button>
+                </div>
+              `;
+            } else {
+              // 常规展示状态
+              return `
+                <div class="flex justify-between items-center p-2 bg-white rounded border border-yellow-200">
+                  <span class="font-medium text-gray-800">${i + 1}. ${r.name} <strong class="text-yellow-600">(${r.cost}分)</strong></span>
+                  <div class="flex gap-1.5">
+                    <button onclick="enableRewardEdit(${i})" class="bg-blue-50 hover:bg-blue-500 hover:text-white text-blue-600 px-2.5 py-1 rounded border border-blue-200 text-xs transition">✏️ 修改</button>
+                    <button onclick="deleteReward(${i})" class="bg-red-50 hover:bg-red-500 hover:text-white text-red-600 px-2.5 py-1 rounded border border-red-200 text-xs transition">🗑️ 删除</button>
+                  </div>
+                </div>
+              `;
+            }
+          }).join('');
         }
       }
 
@@ -587,7 +602,7 @@
       }
     }
 
-    // --- 🎁 统一心愿管理（添加/编辑/删除） ---
+    // --- 🎁 心愿管理（内联直接编辑名称和积分） ---
     function addReward() {
       const nameInput = document.getElementById('reward-name');
       const costInput = document.getElementById('reward-cost');
@@ -605,26 +620,37 @@
       }
     }
 
-    function editReward(idx) {
-      const r = appState.rewards[idx];
-      const newName = prompt('修改心愿名称：', r.name);
-      if (newName === null) return;
-      const newCostStr = prompt('修改所需积分：', r.cost);
-      if (newCostStr === null) return;
-      const newCost = parseInt(newCostStr);
+    function enableRewardEdit(idx) {
+      editingRewardIndex = idx;
+      renderState();
+    }
 
-      if (newName.trim() && !isNaN(newCost) && newCost > 0) {
-        appState.rewards[idx] = { name: newName.trim(), cost: newCost };
+    function cancelRewardEdit() {
+      editingRewardIndex = -1;
+      renderState();
+    }
+
+    function saveRewardEdit(idx) {
+      const newNameInput = document.getElementById(`edit-reward-name-${idx}`);
+      const newCostInput = document.getElementById(`edit-reward-cost-${idx}`);
+      
+      const newName = newNameInput.value.trim();
+      const newCost = parseInt(newCostInput.value);
+
+      if (newName && !isNaN(newCost) && newCost > 0) {
+        appState.rewards[idx] = { name: newName, cost: newCost };
+        editingRewardIndex = -1;
         renderState();
         uploadToCloud(true);
       } else {
-        alert('修改失败：请输入有效的心愿名称和数字积分！');
+        alert('请正确填写名称和数字积分！');
       }
     }
 
     function deleteReward(idx) {
       if (confirm(`确定要删除心愿“${appState.rewards[idx].name}”吗？`)) {
         appState.rewards.splice(idx, 1);
+        if (editingRewardIndex === idx) editingRewardIndex = -1;
         renderState();
         uploadToCloud(true);
       }
