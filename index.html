@@ -23,7 +23,7 @@
       }
       header, 
       .no-print,
-      #sync-card,
+      #parent-panel,
       #shop-container,
       #stats-container,
       #mistakes-container,
@@ -81,27 +81,45 @@
 
   <main class="max-w-4xl mx-auto w-full space-y-6">
 
-    <!-- ☁️ 云端数据同步面板（新增功能） -->
-    <section id="sync-card" class="bg-white p-5 rounded-2xl shadow-sm border border-green-100 no-print">
-      <div class="flex justify-between items-center mb-3">
-        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-          <span>☁️</span> 云端多端数据同步
+    <!-- ⚙️ 家长控制与云端设置面板（整合恢复） -->
+    <section id="parent-panel" class="bg-white p-5 rounded-2xl shadow-sm border border-green-100 no-print">
+      <div class="flex justify-between items-center cursor-pointer" onclick="toggleParentSettings()">
+        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2 font-kuaile">
+          <span>⚙️</span> 家长控制与云端同步设置
         </h2>
-        <span id="sync-status" class="text-xs text-gray-400">本地离线状态</span>
+        <span id="toggle-icon" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">展开设置 🔽</span>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <input type="text" id="sync-key" placeholder="JSONBin Master Key ($2a$10$...)" class="border rounded-xl px-3 py-2 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
-        <input type="text" id="sync-id" placeholder="同步标识/学生ID (例: kid_8888)" class="border rounded-xl px-3 py-2 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
-        <div class="flex gap-2">
-          <button onclick="uploadToCloud()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs py-2 rounded-xl shadow transition">
-            ☁️ 上传同步
-          </button>
-          <button onclick="downloadFromCloud()" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs py-2 rounded-xl shadow transition">
-            📥 拉取云端
+
+      <div id="parent-settings-content" class="hidden mt-4 pt-4 border-t border-gray-100 space-y-4">
+        <!-- 1. 云端同步配置 -->
+        <div>
+          <h3 class="text-xs font-bold text-gray-500 mb-2">☁️ 云端跨设备同步设置</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input type="text" id="sync-key" placeholder="JSONBin Master Key ($2a$10$...)" class="border rounded-xl px-3 py-2 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
+            <input type="text" id="sync-id" placeholder="同步标识/学生ID (例: kid_8888)" class="border rounded-xl px-3 py-2 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
+            <div class="flex gap-2">
+              <button onclick="uploadToCloud()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs py-2 rounded-xl shadow transition">
+                ☁️ 上传备份
+              </button>
+              <button onclick="downloadFromCloud()" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs py-2 rounded-xl shadow transition">
+                📥 拉取数据
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 家长手动调整积分与数据重置 -->
+        <div class="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-gray-700">手动修改积分：</span>
+            <input type="number" id="manual-score-input" placeholder="输入新积分" class="border rounded-lg px-2 py-1 w-24 text-xs">
+            <button onclick="updateScoreManually()" class="bg-gray-700 hover:bg-gray-800 text-white px-3 py-1 rounded-lg">保存积分</button>
+          </div>
+          <button onclick="resetTodayStatus()" class="text-red-500 hover:text-red-700 underline text-xs">
+            ⚠️ 重置今日答题状态（方便测试）
           </button>
         </div>
       </div>
-      <p class="text-[11px] text-gray-400 mt-2">首次设置：填入 API Key 和 自定义ID 后点击“上传同步”。换浏览器或设备时，填入相同的 ID 和 Key 点击“拉取云端”即可恢复全部积分与记录。</p>
     </section>
 
     <!-- 🎯 答题区域 -->
@@ -122,7 +140,7 @@
       </div>
     </section>
 
-    <!-- 📊 统计与错题集 (常规控制) -->
+    <!-- 📊 统计与错题集 -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
       <!-- 错题本 -->
       <section id="mistakes-container" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
@@ -157,7 +175,6 @@
   </footer>
 
   <script>
-    // --- 核心题库（苏教版二年级上册） ---
     const defaultQuizData = [
       { id: 1, type: 'math', q: '计算算式 45 ➕ 28 ➖ 19 的正确结果是多少？', options: ['A. 54', 'B. 64', 'C. 44', 'D. 73'], ans: 0, parse: '按顺序计算：45+28=73，73-19=54。' },
       { id: 2, type: 'math', q: '计算算式 5 ✖️ 4 时，用到的乘法口诀是？', options: ['A. 四五二十', 'B. 五五二十五', 'C. 三五十五', 'D. 四六二十四'], ans: 0, parse: '根据口诀“四五二十”计算 5✖️4=20。' },
@@ -166,7 +183,6 @@
       { id: 5, type: 'chinese', q: '补全古诗《梅花》：“遥知不是雪，________________。”', options: ['A. 为有暗香来', 'B. 粒粒皆辛苦', 'C. 乡音无改鬓毛衰', 'D. 处处闻啼鸟'], ans: 0, parse: '出处：王安石《梅花》“遥知不是雪，为有暗香来”。' }
     ];
 
-    // --- 应用全局状态 ---
     let appState = {
       score: 0,
       mistakes: [],
@@ -179,12 +195,23 @@
       syncId: ''
     };
 
-    // --- 初始化 ---
     window.onload = function() {
       loadLocalStorage();
       renderQuiz();
       renderState();
     };
+
+    function toggleParentSettings() {
+      const content = document.getElementById('parent-settings-content');
+      const icon = document.getElementById('toggle-icon');
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.innerText = '收起设置 🔼';
+      } else {
+        content.classList.add('hidden');
+        icon.innerText = '展开设置 🔽';
+      }
+    }
 
     function loadLocalStorage() {
       const saved = localStorage.getItem('grade2_app_state');
@@ -201,7 +228,6 @@
       localStorage.setItem('grade2_app_state', JSON.stringify(appState));
     }
 
-    // --- 渲染界面 ---
     function renderQuiz() {
       const list = document.getElementById('questions-list');
       list.innerHTML = defaultQuizData.map((q, idx) => `
@@ -225,7 +251,6 @@
     function renderState() {
       document.getElementById('current-score').innerText = appState.score;
       
-      // 渲染错题本
       const mList = document.getElementById('mistakes-list');
       if (appState.mistakes.length === 0) {
         mList.innerHTML = `<p class="text-gray-400 italic">太棒了，目前没有累积的错题！</p>`;
@@ -238,7 +263,6 @@
         `).join('');
       }
 
-      // 渲染商城
       const rList = document.getElementById('rewards-list');
       rList.innerHTML = appState.rewards.map((r, i) => `
         <div class="flex justify-between items-center p-2 bg-yellow-50 rounded border border-yellow-100">
@@ -250,7 +274,6 @@
       saveLocalStorage();
     }
 
-    // --- 答题逻辑 ---
     function submitQuiz() {
       const today = new Date().toLocaleDateString();
       if (appState.completedDates.includes(today)) {
@@ -264,7 +287,6 @@
         if (selected && parseInt(selected.value) === q.ans) {
           earned += 1;
         } else {
-          // 收集错题
           if (!appState.mistakes.some(m => m.id === q.id)) {
             appState.mistakes.push(q);
           }
@@ -276,7 +298,6 @@
       renderState();
       alert(`答题完成！本次获得 ${earned} 积分，累计积分：${appState.score}`);
       
-      // 如果配置了云端Key，提交后自动备份
       if (appState.syncKey && appState.syncId) {
         uploadToCloud(true);
       }
@@ -306,20 +327,32 @@
       }
     }
 
-    // --- ☁️ 云端 API 同步核心逻辑 (JSONBin) ---
+    function updateScoreManually() {
+      const val = parseInt(document.getElementById('manual-score-input').value);
+      if (!isNaN(val) && val >= 0) {
+        appState.score = val;
+        renderState();
+        alert(`积分已手动调整为：${val}`);
+      }
+    }
+
+    function resetTodayStatus() {
+      const today = new Date().toLocaleDateString();
+      appState.completedDates = appState.completedDates.filter(d => d !== today);
+      saveLocalStorage();
+      alert('已重置今日答题状态，现在可以重新提交测试了！');
+    }
+
     async function uploadToCloud(silent = false) {
       const key = document.getElementById('sync-key').value.trim();
       const syncId = document.getElementById('sync-id').value.trim();
-      const statusEl = document.getElementById('sync-status');
 
       if (!key || !syncId) {
         if (!silent) alert('请先填写 JSONBin Master Key 和 同步标识/学生ID！');
         return;
       }
 
-      statusEl.innerText = '正在上传同步...';
       try {
-        // 先查询是否有已存在的 bin
         const res = await fetch(`https://api.jsonbin.io/v3/b`, {
           method: 'POST',
           headers: {
@@ -330,15 +363,10 @@
           body: JSON.stringify(appState)
         });
 
-        if (res.ok) {
-          statusEl.innerText = '✅ 云端数据已同步';
-          if (!silent) alert('数据完美同步到云端！在其他设备上输入相同 Key 和 ID 即可一键恢复。');
-        } else {
-          statusEl.innerText = '❌ 同步失败，请检查 Key';
-          if (!silent) alert('同步失败，请检查 API Key 是否填写正确。');
+        if (res.ok && !silent) {
+          alert('数据完美同步到云端！在其他设备上输入相同 Key 和 ID 即可一键恢复。');
         }
       } catch (e) {
-        statusEl.innerText = '❌ 网络连接错误';
         if (!silent) alert('网络通信失败，请重试。');
       }
     }
@@ -346,16 +374,13 @@
     async function downloadFromCloud() {
       const key = document.getElementById('sync-key').value.trim();
       const syncId = document.getElementById('sync-id').value.trim();
-      const statusEl = document.getElementById('sync-status');
 
       if (!key || !syncId) {
         alert('请先填写 JSONBin Master Key 和 同步标识/学生ID！');
         return;
       }
 
-      statusEl.innerText = '正在读取云端数据...';
       try {
-        // 获取所有 bins 并找到对应 syncId 的数据
         const res = await fetch(`https://api.jsonbin.io/v3/c/uncategorized/bins`, {
           headers: { 'X-Master-Key': key }
         });
@@ -363,12 +388,10 @@
         
         const targetBin = binsData.find(b => b.snippetMeta && b.snippetMeta.name === `quiz_${syncId}`);
         if (!targetBin) {
-          alert(`未在云端找到 ID 为 [${syncId}] 的备份记录，请先在原设备上点击“上传同步”。`);
-          statusEl.innerText = '未找到备份';
+          alert(`未在云端找到 ID 为 [${syncId}] 的备份记录。`);
           return;
         }
 
-        // 读取具体 Bin 的数据
         const dataRes = await fetch(`https://api.jsonbin.io/v3/b/${targetBin.record}`, {
           headers: { 'X-Master-Key': key }
         });
@@ -377,11 +400,9 @@
         if (cloudData.record) {
           appState = { ...appState, ...cloudData.record };
           renderState();
-          statusEl.innerText = '✅ 云端数据已成功拉取';
           alert('数据同步成功！已恢复云端的最新积分和错题记录。');
         }
       } catch (e) {
-        statusEl.innerText = '❌ 读取失败';
         alert('拉取数据失败，请检查网络或配置信息。');
       }
     }
