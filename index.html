@@ -123,13 +123,20 @@
           <span class="text-gray-400 text-[11px]">初始密码：<strong>8888</strong></span>
         </div>
 
-        <!-- 家长专属：心愿商城管理（新增奖品） -->
-        <div class="bg-yellow-50 p-3 rounded-xl border border-yellow-200 space-y-2">
-          <h3 class="text-xs font-bold text-yellow-800">🎁 家长专享：新增心愿奖品</h3>
+        <!-- 🎁 家长专享：心愿奖品统一管理区（添加 + 编辑 + 删除 在同一块页面） -->
+        <div class="bg-yellow-50 p-3.5 rounded-xl border border-yellow-200 space-y-3">
+          <h3 class="text-xs font-bold text-yellow-800 flex items-center gap-1">
+            <span>🎁</span> 家长专享：心愿奖品统一管理区
+          </h3>
+          <!-- 添加新奖品输入表单 -->
           <div class="flex gap-2">
-            <input type="text" id="reward-name" placeholder="心愿名称 (例: 选一本绘本)" class="border rounded-xl px-3 py-1.5 text-xs flex-1 focus:outline-none focus:ring-2 focus:ring-yellow-400">
-            <input type="number" id="reward-cost" placeholder="积分" class="border rounded-xl px-3 py-1.5 text-xs w-20 focus:outline-none focus:ring-2 focus:ring-yellow-400">
-            <button onclick="addReward()" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-4 py-1.5 rounded-xl font-bold shadow transition whitespace-nowrap">添加奖品</button>
+            <input type="text" id="reward-name" placeholder="心愿名称 (例: 选一本绘本)" class="border rounded-xl px-3 py-1.5 text-xs flex-1 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white">
+            <input type="number" id="reward-cost" placeholder="积分" class="border rounded-xl px-3 py-1.5 text-xs w-20 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white">
+            <button onclick="addReward()" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-4 py-1.5 rounded-xl font-bold shadow transition whitespace-nowrap">➕ 添加奖品</button>
+          </div>
+          <!-- 现有奖品列表管理（直接支持在线编辑/删除） -->
+          <div id="parent-rewards-manage-list" class="space-y-2 max-h-48 overflow-y-auto text-xs border-t border-yellow-200 pt-2">
+            <!-- 动态渲染家长端管理列表 -->
           </div>
         </div>
 
@@ -206,18 +213,18 @@
         <p class="text-[11px] text-gray-400 mt-3 pt-2 border-t">提示：答对错题后，系统会自动将其从错题本中移除。</p>
       </section>
 
-      <!-- 🎁 积分心愿兑换商城（受家长权限保护） -->
+      <!-- 🎁 孩子端积分心愿兑换商城（纯干净兑换界面） -->
       <section id="shop-container" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
         <div class="flex justify-between items-center mb-3">
           <h3 class="text-base sm:text-lg font-bold text-yellow-600 flex items-center gap-2 font-kuaile">
             <span>🎁</span> 积分心愿兑换商城
           </h3>
           <button onclick="toggleParentSettings()" class="text-[11px] bg-yellow-100 text-yellow-800 hover:bg-yellow-200 px-2 py-1 rounded-lg font-bold transition">
-            🔒 管理奖品
+            🔒 家长设置
           </button>
         </div>
         <div id="rewards-list" class="space-y-2 max-h-52 overflow-y-auto text-xs">
-          <!-- 动态渲染奖励 -->
+          <!-- 动态渲染孩子兑换列表 -->
         </div>
       </section>
     </div>
@@ -265,7 +272,6 @@
 
     let currentQuizData = getTodayQuiz();
     let isMistakeMode = false;
-    let isParentUnlocked = false; // 是否已经解锁家长权限
 
     let appState = {
       score: 0,
@@ -303,31 +309,24 @@
       localStorage.setItem('grade2_app_state', JSON.stringify(appState));
     }
 
-    // --- 🔒 家长控制面板密码验证 ---
     function toggleParentSettings() {
       const content = document.getElementById('parent-settings-content');
       const icon = document.getElementById('toggle-icon');
 
-      if (!isParentUnlocked) {
+      if (content.classList.contains('hidden')) {
         const inputPin = prompt('🔒 此操作需要家长权限，请输入家长管理密码：', '');
         if (inputPin === null) return;
 
         if (inputPin.trim() === (appState.parentPin || '8888')) {
-          isParentUnlocked = true;
           content.classList.remove('hidden');
           icon.innerText = '收起设置 🔼';
-          renderState(); // 重新渲染奖品列表，显示编辑/删除控件
+          renderState();
         } else {
           alert('❌ 密码错误，无法操作！');
         }
       } else {
-        if (content.classList.contains('hidden')) {
-          content.classList.remove('hidden');
-          icon.innerText = '收起设置 🔼';
-        } else {
-          content.classList.add('hidden');
-          icon.innerText = '展开设置 🔽';
-        }
+        content.classList.add('hidden');
+        icon.innerText = '展开设置 🔽';
       }
     }
 
@@ -418,6 +417,7 @@
       document.getElementById('current-score').innerText = appState.score;
       document.getElementById('streak-days').innerText = `${appState.streak || 0} 天`;
       
+      // 错题本渲染
       const mList = document.getElementById('mistakes-list');
       const startTestBtn = document.getElementById('start-mistake-test-btn');
       const printMistakesBtn = document.getElementById('print-mistakes-btn');
@@ -437,20 +437,32 @@
         `).join('');
       }
 
-      // 🎁 渲染奖品（仅当解锁家长权限后显示“编辑/删除”按钮）
+      // 🎁 1. 孩子端列表（纯干净兑换）
       const rList = document.getElementById('rewards-list');
       rList.innerHTML = appState.rewards.map((r, i) => `
         <div class="flex justify-between items-center p-2.5 bg-yellow-50 rounded border border-yellow-100">
           <span class="font-medium text-gray-700">${r.name} <span class="text-yellow-600 font-bold">(${r.cost}分)</span></span>
-          <div class="flex gap-1.5">
-            <button onclick="redeemReward(${i})" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2.5 py-1 rounded text-xs font-bold transition">兑换</button>
-            ${isParentUnlocked ? `
-              <button onclick="editReward(${i})" class="bg-blue-100 hover:bg-blue-500 hover:text-white text-blue-600 px-2 py-1 rounded text-xs transition">✏️</button>
-              <button onclick="deleteReward(${i})" class="bg-gray-200 hover:bg-red-500 hover:text-white text-gray-600 px-2 py-1 rounded text-xs transition" title="删除">×</button>
-            ` : ''}
-          </div>
+          <button onclick="redeemReward(${i})" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-bold transition">兑换</button>
         </div>
       `).join('');
+
+      // 🎁 2. 家长端管理列表（在同一页面区域集中显示编辑与删除）
+      const pManageList = document.getElementById('parent-rewards-manage-list');
+      if (pManageList) {
+        if (appState.rewards.length === 0) {
+          pManageList.innerHTML = `<p class="text-gray-400 italic text-[11px]">暂无心愿奖品，请在上方输入框添加。</p>`;
+        } else {
+          pManageList.innerHTML = appState.rewards.map((r, i) => `
+            <div class="flex justify-between items-center p-2 bg-white rounded border border-yellow-200">
+              <span class="font-medium text-gray-800">${i + 1}. ${r.name} <strong class="text-yellow-600">(${r.cost}分)</strong></span>
+              <div class="flex gap-1.5">
+                <button onclick="editReward(${i})" class="bg-blue-50 hover:bg-blue-500 hover:text-white text-blue-600 px-2.5 py-1 rounded border border-blue-200 text-xs transition">✏️ 编辑</button>
+                <button onclick="deleteReward(${i})" class="bg-red-50 hover:bg-red-500 hover:text-white text-red-600 px-2.5 py-1 rounded border border-red-200 text-xs transition">🗑️ 删除</button>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
 
       saveLocalStorage();
     }
@@ -575,7 +587,7 @@
       }
     }
 
-    // --- 🎁 奖品管理（由家长控制面板内触发） ---
+    // --- 🎁 统一心愿管理（添加/编辑/删除） ---
     function addReward() {
       const nameInput = document.getElementById('reward-name');
       const costInput = document.getElementById('reward-cost');
@@ -588,9 +600,8 @@
         costInput.value = '';
         renderState();
         uploadToCloud(true);
-        alert(`✅ 已新增奖品：“${name}” (${cost}分)`);
       } else {
-        alert('请输入有效的心愿名称和所需积分！');
+        alert('请输入有效的心愿名称和数字积分！');
       }
     }
 
