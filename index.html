@@ -153,7 +153,7 @@
         </div>
       </section>
 
-      <!-- 🎁 家长积分心愿兑换商城（含新增和删除功能） -->
+      <!-- 🎁 家长积分心愿兑换商城（含新增、编辑、删除功能） -->
       <section id="shop-container" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
         <h3 class="text-lg font-bold text-yellow-600 mb-3 flex items-center gap-2 font-kuaile">
           <span>🎁</span> 积分心愿兑换商城
@@ -178,12 +178,11 @@
   </footer>
 
   <script>
-    // --- 📅 庞大的苏教版二年级题库池（每日自动循环轮换） ---
     const questionBank = [
       [
         { id: 1, type: 'math', q: '计算算式 45 ➕ 28 ➖ 19 的正确结果是多少？', options: ['A. 54', 'B. 64', 'C. 44', 'D. 73'], ans: 0, parse: '按顺序计算：45+28=73，73-19=54。' },
         { id: 2, type: 'math', q: '计算算式 5 ✖️ 4 时，用到的乘法口诀是？', options: ['A. 四五二十', 'B. 五五二十五', 'C. 三五十五', 'D. 四六二十四'], ans: 0, parse: '根据口诀“四五二十”计算 5✖️4=20。' },
-        { id: 3, type: 'math', q: '测量数学课本的厚度大约是 1（ ），小明的身高大约是 130（ ）。', options: ['A. 厘米；厘米', 'B. 米；厘米', 'C. 厘米；米', 'D. 米；米'], ans: 0, parse: '课本厚度用“厘米”，身高用“厘米”。' },
+        { id: 3, type: 'math', q: '测量数学课本 the 厚度大约是 1（ ），小明的身高大约是 130（ ）。', options: ['A. 厘米；厘米', 'B. 米；厘米', 'C. 厘米；米', 'D. 米；米'], ans: 0, parse: '课本厚度用“厘米”，身高用“厘米”。' },
         { id: 4, type: 'chinese', q: '生字“装”的结构和部首是什么？', options: ['A. 上下结构，部首是“衣”', 'B. 左右结构，部首是“壮”', 'C. 半包围结构，部首是“衣”', 'D. 上下结构，部首是“壮”'], ans: 0, parse: '“装”上壮下衣，属于上下结构，部首是“衣”。' },
         { id: 5, type: 'chinese', q: '补全古诗《梅花》：“遥知不是雪，________________。”', options: ['A. 为有暗香来', 'B. 粒粒皆辛苦', 'C. 乡音无改鬓毛衰', 'D. 处处闻啼鸟'], ans: 0, parse: '出处：王安石《梅花》“遥知不是雪，为有暗香来”。' }
       ],
@@ -292,14 +291,15 @@
         `).join('');
       }
 
-      // 🎁 渲染奖励列表（支持删除功能）
+      // 🎁 渲染奖励列表（支持兑换、编辑、删除功能）
       const rList = document.getElementById('rewards-list');
       rList.innerHTML = appState.rewards.map((r, i) => `
         <div class="flex justify-between items-center p-2 bg-yellow-50 rounded border border-yellow-100">
           <span class="font-medium text-gray-700">${r.name} <span class="text-yellow-600 font-bold">(${r.cost}分)</span></span>
           <div class="flex gap-1">
             <button onclick="redeemReward(${i})" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2.5 py-1 rounded text-xs font-bold transition">兑换</button>
-            <button onclick="deleteReward(${i})" class="bg-gray-200 hover:bg-red-500 hover:text-white text-gray-600 px-2 py-1 rounded text-xs transition" title="删除该奖品">×</button>
+            <button onclick="editReward(${i})" class="bg-blue-100 hover:bg-blue-500 hover:text-white text-blue-600 px-2.5 py-1 rounded text-xs transition">✏️ 编辑</button>
+            <button onclick="deleteReward(${i})" class="bg-gray-200 hover:bg-red-500 hover:text-white text-gray-600 px-2.5 py-1 rounded text-xs transition" title="删除该奖品">×</button>
           </div>
         </div>
       `).join('');
@@ -357,7 +357,7 @@
       if (appState.syncKey && appState.syncId) { uploadToCloud(true); }
     }
 
-    // --- 🎁 新增与删除心愿奖励 ---
+    // --- 🎁 新增、编辑、删除心愿奖励 ---
     function addReward() {
       const nameInput = document.getElementById('reward-name');
       const costInput = document.getElementById('reward-cost');
@@ -372,6 +372,24 @@
         if (appState.syncKey && appState.syncId) { uploadToCloud(true); }
       } else {
         alert('请输入有效的心愿名称和所需积分！');
+      }
+    }
+
+    function editReward(idx) {
+      const r = appState.rewards[idx];
+      const newName = prompt('修改心愿名称：', r.name);
+      if (newName === null) return; // 取消
+      
+      const newCostStr = prompt('修改所需积分：', r.cost);
+      if (newCostStr === null) return; // 取消
+
+      const newCost = parseInt(newCostStr);
+      if (newName.trim() && !isNaN(newCost) && newCost > 0) {
+        appState.rewards[idx] = { name: newName.trim(), cost: newCost };
+        renderState();
+        if (appState.syncKey && appState.syncId) { uploadToCloud(true); }
+      } else {
+        alert('修改失败：请输入有效的心愿名称和数字积分！');
       }
     }
 
