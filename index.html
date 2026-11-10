@@ -140,9 +140,9 @@
 
         <!-- 云端同步 -->
         <div>
-          <h3 class="text-xs font-bold text-gray-500 mb-2">☁️ 云端多端同步 (<span class="text-green-600">换设备只需输入学生ID</span>)</h3>
+          <h3 class="text-xs font-bold text-gray-500 mb-2">☁️ 云端多端同步 (<span class="text-green-600">默认ID: kid_2026</span>)</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input type="text" id="sync-id" placeholder="输入好记的学生ID (例: leo_grade2)" class="border rounded-xl px-3 py-2.5 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
+            <input type="text" id="sync-id" placeholder="输入好记的学生ID (例: kid_2026)" class="border rounded-xl px-3 py-2.5 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
             <div class="flex gap-2">
               <button onclick="uploadToCloud(false)" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs py-2.5 rounded-xl shadow transition">
                 ☁️ 手动上传备份
@@ -299,9 +299,9 @@
         { name: '游乐场门票一次', cost: 50 },
         { name: '挑选一本新书', cost: 30 }
       ],
-      redemptionHistory: [], // 新增：兑换历史记录数组
+      redemptionHistory: [],
       completedDates: [],
-      syncId: 'leo_grade2'
+      syncId: 'kid_2026' // 默认学生ID已统一设为 kid_2026
     };
 
     window.onload = function() {
@@ -316,12 +316,12 @@
       if (saved) {
         try { appState = { ...appState, ...JSON.parse(saved) }; } catch(e){}
       }
-      document.getElementById('sync-id').value = appState.syncId || 'leo_grade2';
+      document.getElementById('sync-id').value = appState.syncId || 'kid_2026';
       document.getElementById('new-password-input').value = appState.parentPin || '8888';
     }
 
     function saveLocalStorage() {
-      appState.syncId = document.getElementById('sync-id').value.trim() || 'leo_grade2';
+      appState.syncId = document.getElementById('sync-id').value.trim() || 'kid_2026';
       localStorage.setItem('grade2_app_state', JSON.stringify(appState));
     }
 
@@ -452,7 +452,7 @@
         `).join('');
       }
 
-      // 🎁 1. 孩子端商城列表（积分不足时兑换按钮自动置灰）
+      // 🎁 1. 孩子端商城列表
       const rList = document.getElementById('rewards-list');
       rList.innerHTML = appState.rewards.map((r, i) => {
         const canAfford = appState.score >= r.cost;
@@ -695,14 +695,12 @@
       }
     }
 
-    // 🎁 兑换奖品并记录到历史记录中
     function redeemReward(idx) {
       const r = appState.rewards[idx];
       if (appState.score >= r.cost) {
         if (confirm(`确定花费 ${r.cost} 积分兑换“${r.name}”吗？`)) {
           appState.score -= r.cost;
           
-          // 写入兑换历史记录
           if (!appState.redemptionHistory) appState.redemptionHistory = [];
           const timeStr = new Date().toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
           appState.redemptionHistory.unshift({ name: r.name, cost: r.cost, time: timeStr });
@@ -734,7 +732,7 @@
     }
 
     async function uploadToCloud(silent = false) {
-      const syncId = document.getElementById('sync-id').value.trim() || 'leo_grade2';
+      const syncId = document.getElementById('sync-id').value.trim() || 'kid_2026';
 
       try {
         const res = await fetch(`https://api.jsonbin.io/v3/b`, {
@@ -764,7 +762,7 @@
     }
 
     async function downloadFromCloud() {
-      const syncId = document.getElementById('sync-id').value.trim() || 'leo_grade2';
+      const syncId = document.getElementById('sync-id').value.trim() || 'kid_2026';
 
       try {
         const res = await fetch(`https://api.jsonbin.io/v3/c/uncategorized/bins`, {
