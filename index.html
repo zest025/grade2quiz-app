@@ -123,20 +123,18 @@
           <span class="text-gray-400 text-[11px]">初始密码：<strong>8888</strong></span>
         </div>
 
-        <!-- 🎁 家长专享：心愿奖品统一管理区（添加 + 直接内联修改名称与积分 + 删除） -->
+        <!-- 🎁 家长专享：心愿奖品统一管理区 -->
         <div class="bg-yellow-50 p-3.5 rounded-xl border border-yellow-200 space-y-3">
           <h3 class="text-xs font-bold text-yellow-800 flex items-center gap-1">
             <span>🎁</span> 家长专享：心愿奖品统一管理区
           </h3>
-          <!-- 添加新奖品输入表单 -->
           <div class="flex gap-2">
             <input type="text" id="reward-name" placeholder="心愿名称 (例: 选一本绘本)" class="border rounded-xl px-3 py-1.5 text-xs flex-1 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white">
             <input type="number" id="reward-cost" placeholder="积分" class="border rounded-xl px-3 py-1.5 text-xs w-20 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white">
             <button onclick="addReward()" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-4 py-1.5 rounded-xl font-bold shadow transition whitespace-nowrap">➕ 添加奖品</button>
           </div>
-          <!-- 现有奖品列表管理 -->
           <div id="parent-rewards-manage-list" class="space-y-2 max-h-48 overflow-y-auto text-xs border-t border-yellow-200 pt-2">
-            <!-- 动态渲染家长端管理列表 -->
+            <!-- 动态渲染 -->
           </div>
         </div>
 
@@ -213,18 +211,34 @@
         <p class="text-[11px] text-gray-400 mt-3 pt-2 border-t">提示：答对错题后，系统会自动将其从错题本中移除。</p>
       </section>
 
-      <!-- 🎁 孩子端积分心愿兑换商城 -->
-      <section id="shop-container" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="text-base sm:text-lg font-bold text-yellow-600 flex items-center gap-2 font-kuaile">
-            <span>🎁</span> 积分心愿兑换商城
-          </h3>
-          <button onclick="toggleParentSettings()" class="text-[11px] bg-yellow-100 text-yellow-800 hover:bg-yellow-200 px-2 py-1 rounded-lg font-bold transition">
-            🔒 家长设置
-          </button>
+      <!-- 🎁 积分心愿兑换商城与历史记录 -->
+      <section id="shop-container" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+        <div>
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-base sm:text-lg font-bold text-yellow-600 flex items-center gap-2 font-kuaile">
+              <span>🎁</span> 积分心愿兑换商城
+            </h3>
+            <button onclick="toggleParentSettings()" class="text-[11px] bg-yellow-100 text-yellow-800 hover:bg-yellow-200 px-2 py-1 rounded-lg font-bold transition">
+              🔒 家长设置
+            </button>
+          </div>
+          <!-- 兑换列表 -->
+          <div id="rewards-list" class="space-y-2 max-h-40 overflow-y-auto text-xs">
+            <!-- 动态渲染 -->
+          </div>
         </div>
-        <div id="rewards-list" class="space-y-2 max-h-52 overflow-y-auto text-xs">
-          <!-- 动态渲染孩子兑换列表 -->
+
+        <!-- 📜 兑换历史记录区 -->
+        <div class="mt-4 pt-3 border-t border-gray-100">
+          <div class="flex justify-between items-center mb-2">
+            <h4 class="text-xs font-bold text-gray-600 flex items-center gap-1">
+              <span>📜</span> 积分兑换历史记录
+            </h4>
+            <span id="history-count" class="text-[10px] text-gray-400">共 0 条</span>
+          </div>
+          <div id="redemption-history-list" class="space-y-1.5 max-h-32 overflow-y-auto text-[11px] text-gray-500">
+            <p class="text-gray-400 italic">暂无兑换记录，快去攒积分吧！</p>
+          </div>
         </div>
       </section>
     </div>
@@ -272,7 +286,7 @@
 
     let currentQuizData = getTodayQuiz();
     let isMistakeMode = false;
-    let editingRewardIndex = -1; // 当前正在内联编辑的奖品索引 (-1 表示未编辑)
+    let editingRewardIndex = -1;
 
     let appState = {
       score: 0,
@@ -285,6 +299,7 @@
         { name: '游乐场门票一次', cost: 50 },
         { name: '挑选一本新书', cost: 30 }
       ],
+      redemptionHistory: [], // 新增：兑换历史记录数组
       completedDates: [],
       syncId: 'leo_grade2'
     };
@@ -437,16 +452,43 @@
         `).join('');
       }
 
-      // 🎁 1. 孩子端列表
+      // 🎁 1. 孩子端商城列表（积分不足时兑换按钮自动置灰）
       const rList = document.getElementById('rewards-list');
-      rList.innerHTML = appState.rewards.map((r, i) => `
-        <div class="flex justify-between items-center p-2.5 bg-yellow-50 rounded border border-yellow-100">
-          <span class="font-medium text-gray-700">${r.name} <span class="text-yellow-600 font-bold">(${r.cost}分)</span></span>
-          <button onclick="redeemReward(${i})" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-bold transition">兑换</button>
-        </div>
-      `).join('');
+      rList.innerHTML = appState.rewards.map((r, i) => {
+        const canAfford = appState.score >= r.cost;
+        return `
+          <div class="flex justify-between items-center p-2.5 bg-yellow-50 rounded border border-yellow-100">
+            <span class="font-medium text-gray-700">${r.name} <span class="text-yellow-600 font-bold">(${r.cost}分)</span></span>
+            ${canAfford ? `
+              <button onclick="redeemReward(${i})" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-bold transition shadow-sm">兑换</button>
+            ` : `
+              <button disabled class="bg-gray-200 text-gray-400 px-3 py-1 rounded text-xs cursor-not-allowed font-medium" title="积分不足，还差 ${r.cost - appState.score} 分">积分不足</button>
+            `}
+          </div>
+        `;
+      }).join('');
 
-      // 🎁 2. 家长端统一管理列表（支持内联直接修改名称与积分）
+      // 📜 2. 积分兑换历史记录渲染
+      const historyListEl = document.getElementById('redemption-history-list');
+      const historyCountEl = document.getElementById('history-count');
+      const historyData = appState.redemptionHistory || [];
+      
+      historyCountEl.innerText = `共 ${historyData.length} 条`;
+      if (historyData.length === 0) {
+        historyListEl.innerHTML = `<p class="text-gray-400 italic">暂无兑换记录，快去攒积分吧！</p>`;
+      } else {
+        historyListEl.innerHTML = historyData.map((h, idx) => `
+          <div class="flex justify-between items-center p-2 bg-gray-50 rounded border border-gray-100">
+            <div>
+              <span class="font-bold text-gray-700">${h.name}</span>
+              <span class="text-yellow-600 font-bold ml-1">(-${h.cost}分)</span>
+            </div>
+            <span class="text-[10px] text-gray-400">${h.time}</span>
+          </div>
+        `).join('');
+      }
+
+      // 🎁 3. 家长端管理列表
       const pManageList = document.getElementById('parent-rewards-manage-list');
       if (pManageList) {
         if (appState.rewards.length === 0) {
@@ -454,7 +496,6 @@
         } else {
           pManageList.innerHTML = appState.rewards.map((r, i) => {
             if (editingRewardIndex === i) {
-              // 编辑状态：展示输入框供同时修改名称和积分
               return `
                 <div class="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-300">
                   <input type="text" id="edit-reward-name-${i}" value="${r.name}" class="border rounded px-2 py-1 text-xs flex-1">
@@ -464,7 +505,6 @@
                 </div>
               `;
             } else {
-              // 常规展示状态
               return `
                 <div class="flex justify-between items-center p-2 bg-white rounded border border-yellow-200">
                   <span class="font-medium text-gray-800">${i + 1}. ${r.name} <strong class="text-yellow-600">(${r.cost}分)</strong></span>
@@ -602,7 +642,6 @@
       }
     }
 
-    // --- 🎁 心愿管理（内联直接编辑名称和积分） ---
     function addReward() {
       const nameInput = document.getElementById('reward-name');
       const costInput = document.getElementById('reward-cost');
@@ -656,11 +695,18 @@
       }
     }
 
+    // 🎁 兑换奖品并记录到历史记录中
     function redeemReward(idx) {
       const r = appState.rewards[idx];
       if (appState.score >= r.cost) {
         if (confirm(`确定花费 ${r.cost} 积分兑换“${r.name}”吗？`)) {
           appState.score -= r.cost;
+          
+          // 写入兑换历史记录
+          if (!appState.redemptionHistory) appState.redemptionHistory = [];
+          const timeStr = new Date().toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          appState.redemptionHistory.unshift({ name: r.name, cost: r.cost, time: timeStr });
+
           renderState();
           alert('兑换成功！去找家长兑现承诺吧！');
           uploadToCloud(true);
