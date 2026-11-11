@@ -175,7 +175,12 @@
       </div>
       
       <div id="questions-list" class="space-y-4 sm:space-y-6">
-        <!-- 动态渲染题目 -->
+        <!-- 动态渲染主干题目 -->
+      </div>
+
+      <!-- 🚀 每日附加挑战题区域 -->
+      <div id="bonus-question-area" class="mt-6 pt-6 border-t-2 border-dashed border-purple-200">
+        <!-- 动态渲染附加题 -->
       </div>
 
       <div class="mt-6 pt-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-between items-center no-print gap-3">
@@ -251,9 +256,9 @@
   </footer>
 
   <script>
-    // 🔑 在此处填入你的真实 JSONBin Master Key，发布后无需在页面上手动填写
     const DEFAULT_MASTER_KEY = "$2a$10$z.bkMrpAmXGkRtj/YgBVyOGX2vzchhej/q2TCZznPaWUsSczskr5u"; 
 
+    // 主干题库（每天自动切换）
     const questionBank = [
       [
         { id: 1, type: 'math', q: '计算算式 45 ➕ 28 ➖ 19 的正确结果是多少？', options: ['A. 54', 'B. 64', 'C. 44', 'D. 73'], ans: 0, parse: '按顺序计算：45+28=73，73-19=54。' },
@@ -278,13 +283,29 @@
       ]
     ];
 
+    // 🌟 跨学科附加挑战题库（含科学、常识、语文益智、逻辑等，每日自动轮换）
+    const bonusQuestionBank = [
+      { id: 101, subject: '自然科学', q: '🌟【附加题·自然科学】树叶在夏天通常是绿色的，到了秋天会慢慢变黄或变红。这是因为树叶里的什么东西变少了？', options: ['A. 叶绿素', 'B. 水分', 'C. 糖分', 'D. 泥土'], ans: 0, parse: '秋天温度降低，树叶中的“叶绿素”分解变少，原本被覆盖的黄色和红色色素就显现出来了。' },
+      { id: 102, subject: '语文益智', q: '🌟【附加题·成语猜谜】“1、2、3、4、5、6、7、8、9”这九个数字里，唯独少了“10”。请问这个谜底对应哪个成语？', options: ['A. 九牛一毛', 'B. 十全十美', 'C. 丢三落四', 'D. 十拿九稳'], ans: 1, parse: '数字只有 1 到 9，缺少了 10，所以是“缺十”，谐音“成双成对”里的“十全十美”或“缺一不可”的变体趣味猜谜（这里考查对“十”的敏感度）。' },
+      { id: 103, subject: '生活常识', q: '🌟【附加题·生活常识】小明在晴朗的中午背对太阳站立，他的影子会在他的哪个方向？', options: ['A. 东边', 'B. 正前方（北边）', 'C. 正后方（南边）', 'D. 西边'], ans: 1, parse: '中午太阳在正南边，背对太阳说明小明面向北边。影子的方向与光线相反，所以影子会在他的正前方（北边）。' },
+      { id: 104, subject: '趣味逻辑', q: '🌟【附加题·趣味逻辑】小熊和动物朋友们排队做操，小熊前面有 3 只小动物，后面有 4 只小动物。请问一共有多少只小动物在做操？', options: ['A. 7 只', 'B. 8 只', 'C. 6 只', 'D. 9 只'], ans: 1, parse: '前面3只 + 小熊自己(1只) + 后面4只 = 3 + 1 + 4 = 8只。别忘了算上小熊自己哦！' },
+      { id: 105, subject: '天文地理', q: '🌟【附加题·天文地理】在夜晚的星空中，有一颗位置几乎固定的亮星，常被人们用来辨别北方的方向。这颗星叫什么？', options: ['A. 北极星', 'B. 织女星', 'C. 启明星', 'D. 牛郎星'], ans: 0, parse: '北极星位于地球自转轴北极指向的附近，夜间位置几乎不动，是著名的辨别方向（北方）的指示星。' }
+    ];
+
     function getTodayQuiz() {
       const now = new Date();
       const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
       return questionBank[dayOfYear % questionBank.length];
     }
 
+    function getTodayBonusQuestion() {
+      const now = new Date();
+      const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+      return bonusQuestionBank[dayOfYear % bonusQuestionBank.length];
+    }
+
     let currentQuizData = getTodayQuiz();
+    let currentBonusData = getTodayBonusQuestion();
     let isMistakeMode = false;
     let editingRewardIndex = -1;
 
@@ -372,6 +393,7 @@
 
     function renderQuiz() {
       const list = document.getElementById('questions-list');
+      const bonusArea = document.getElementById('bonus-question-area');
       const titleEl = document.getElementById('quiz-date-title');
       const badgeEl = document.getElementById('quiz-badge');
       const extraArea = document.getElementById('extra-action-area');
@@ -381,6 +403,7 @@
         titleEl.innerText = `🎯 错题专项集中重测 (${appState.mistakes.length}题)`;
         badgeEl.innerText = `错题重测模式`;
         submitBtn.innerText = `提交错题重测结果 🚀`;
+        bonusArea.innerHTML = ``;
         extraArea.innerHTML = `<button onclick="exitMistakeTest()" class="text-gray-500 hover:text-gray-800 underline text-xs">← 返回今日正常打卡</button>`;
 
         if (appState.mistakes.length === 0) {
@@ -408,7 +431,7 @@
       } else {
         const today = new Date().toLocaleDateString();
         titleEl.innerText = `今日核心练习 (${today})`;
-        badgeEl.innerText = `每题 1 分 · 共 5 分`;
+        badgeEl.innerText = `基础题 5 分 + 附加挑战 5 分`;
         submitBtn.innerText = `提交答案并领取积分 🚀`;
         submitBtn.classList.remove('hidden');
         extraArea.innerHTML = ``;
@@ -426,6 +449,26 @@
             </div>
           </div>
         `).join('');
+
+        const bq = currentBonusData;
+        bonusArea.innerHTML = `
+          <div class="quiz-card p-4 rounded-xl bg-purple-50 border-2 border-purple-200">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-bold bg-purple-600 text-white px-2.5 py-0.5 rounded-full">🔥 跨学科附加挑战（${bq.subject}）</span>
+              <span class="text-xs font-bold text-purple-700">答对奖励 +5 积分</span>
+            </div>
+            <h3 class="font-bold text-purple-900 mb-3 text-sm sm:text-base">${bq.q}</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              ${bq.options.map((opt, oIdx) => `
+                <label class="flex items-center gap-2.5 p-3 rounded-lg border border-purple-200 bg-white cursor-pointer hover:bg-purple-100 transition text-sm">
+                  <input type="radio" name="bonus_q_${bq.id}" value="${oIdx}" class="text-purple-600 focus:ring-purple-500 w-4 h-4">
+                  <span>${opt}</span>
+                </label>
+              `).join('')}
+            </div>
+            <p class="text-[11px] text-purple-400 mt-2 italic">小提示：动脑筋想一想，挑战成功额外加 5 分哦（打错不计入错题本）！</p>
+          </div>
+        `;
       }
     }
 
@@ -617,7 +660,15 @@
           }
         });
 
-        appState.score += earned;
+        let bonusEarned = 0;
+        const bq = currentBonusData;
+        const bonusSelected = document.querySelector(`input[name="bonus_q_${bq.id}"]:checked`);
+        if (bonusSelected && parseInt(bonusSelected.value) === bq.ans) {
+          bonusEarned = 5;
+        }
+
+        const totalEarned = earned + bonusEarned;
+        appState.score += totalEarned;
         appState.completedDates.push(today);
 
         const nowStr = new Date().toDateString();
@@ -628,11 +679,11 @@
 
         renderState();
         
-        if (earned === 5) {
+        if (totalEarned >= 8) {
           triggerFireworks();
-          alert(`太厉害了！全对！本次获得满分 5 积分，累计积分：${appState.score} 🏆`);
+          alert(`太棒了！表现极其优异！基础题 ${earned} 分 + 附加挑战题 ${bonusEarned} 分，本次共获得 ${totalEarned} 积分！🏆`);
         } else {
-          alert(`答题完成！本次获得 ${earned} 积分，累计积分：${appState.score}`);
+          alert(`答题完成！基础题得分：${earned}分，附加题得分：${bonusEarned}分，本次共获得 ${totalEarned} 积分，累计积分：${appState.score}`);
         }
 
         uploadToCloud(true);
