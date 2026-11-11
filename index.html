@@ -226,7 +226,8 @@
               🔒 家长设置
             </button>
           </div>
-          <div id="rewards-list" class="space-y-2 text-xs">
+          <!-- 调整为网格布局：手机端1列，平板及电脑端2列或3列，一行多个 -->
+          <div id="rewards-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
             <!-- 动态渲染 -->
           </div>
         </div>
@@ -285,8 +286,8 @@
 
     // 🌟 跨学科附加挑战题库（含科学、常识、语文益智、逻辑等，每日自动轮换）
     const bonusQuestionBank = [
-      { id: 101, subject: '自然科学', q: '🌟【附加题·自然科学】树叶在夏天通常是绿色的，到了秋天会慢慢变黄或变红。这是因为树叶里的什么东西变少了？', options: ['A. 叶绿素', 'B. 水分', 'C. 糖分', 'D. 泥土'], ans: 0, parse: '秋天温度降低，树叶中的“叶绿素”分解变少，原本被覆盖的黄色和红色色素就显现出来了。' },
-      { id: 102, subject: '语文益智', q: '🌟【附加题·成语猜谜】“1、2、3、4、5、6、7、8、9”这九个数字里，唯独少了“10”。请问这个谜底对应哪个成语？', options: ['A. 九牛一毛', 'B. 十全十美', 'C. 丢三落四', 'D. 十拿九稳'], ans: 1, parse: '数字只有 1 到 9，缺少了 10，所以是“缺十”，谐音“成双成对”里的“十全十美”或“缺一不可”的变体趣味猜谜（这里考查对“十”的敏感度）。' },
+      { id: 101, subject: '自然科学', q: '🌟【附加题·自然科学】树叶 in 夏天通常是绿色的，到了秋天会慢慢变黄或变红。这是因为树叶里的什么东西变少了？', options: ['A. 叶绿素', 'B. 水分', 'C. 糖分', 'D. 泥土'], ans: 0, parse: '秋天温度降低，树叶中的“叶绿素”分解变少，原本被覆盖的黄色和红色色素就显现出来了。' },
+      { id: 102, subject: '语文益智', q: '🌟【附加题·成语猜谜】“1、2、3、4、5、6、7、8、9”这九个数字里，唯独少了“10”。请问这个谜底对应哪个成语？', options: ['A. 九牛一毛', 'B. 十全十美', 'C. 丢三落四', 'D. 十拿九稳'], ans: 1, parse: '数字只有 1 到 9，缺少了 10，所以是“缺十”，谐音“成双成对”里的“十全十美”或“缺一不可”的变体趣味猜谜。' },
       { id: 103, subject: '生活常识', q: '🌟【附加题·生活常识】小明在晴朗的中午背对太阳站立，他的影子会在他的哪个方向？', options: ['A. 东边', 'B. 正前方（北边）', 'C. 正后方（南边）', 'D. 西边'], ans: 1, parse: '中午太阳在正南边，背对太阳说明小明面向北边。影子的方向与光线相反，所以影子会在他的正前方（北边）。' },
       { id: 104, subject: '趣味逻辑', q: '🌟【附加题·趣味逻辑】小熊和动物朋友们排队做操，小熊前面有 3 只小动物，后面有 4 只小动物。请问一共有多少只小动物在做操？', options: ['A. 7 只', 'B. 8 只', 'C. 6 只', 'D. 9 只'], ans: 1, parse: '前面3只 + 小熊自己(1只) + 后面4只 = 3 + 1 + 4 = 8只。别忘了算上小熊自己哦！' },
       { id: 105, subject: '天文地理', q: '🌟【附加题·天文地理】在夜晚的星空中，有一颗位置几乎固定的亮星，常被人们用来辨别北方的方向。这颗星叫什么？', options: ['A. 北极星', 'B. 织女星', 'C. 启明星', 'D. 牛郎星'], ans: 0, parse: '北极星位于地球自转轴北极指向的附近，夜间位置几乎不动，是著名的辨别方向（北方）的指示星。' }
@@ -499,12 +500,15 @@
       rList.innerHTML = appState.rewards.map((r, i) => {
         const canAfford = appState.score >= r.cost;
         return `
-          <div class="flex justify-between items-center p-2.5 bg-yellow-50 rounded border border-yellow-100">
-            <span class="font-medium text-gray-700">${r.name} <span class="text-yellow-600 font-bold">(${r.cost}分)</span></span>
+          <div class="flex justify-between items-center p-2.5 bg-yellow-50 rounded-xl border border-yellow-200 shadow-sm gap-2">
+            <div class="truncate">
+              <span class="font-medium text-gray-700 block truncate">${r.name}</span>
+              <span class="text-yellow-600 font-bold text-[11px]">${r.cost}分</span>
+            </div>
             ${canAfford ? `
-              <button onclick="redeemReward(${i})" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-bold transition shadow-sm">兑换</button>
+              <button onclick="redeemReward(${i})" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap">兑换</button>
             ` : `
-              <button disabled class="bg-gray-200 text-gray-400 px-3 py-1 rounded text-xs cursor-not-allowed font-medium" title="积分不足，还差 ${r.cost - appState.score} 分">积分不足</button>
+              <button disabled class="bg-gray-200 text-gray-400 px-2.5 py-1 rounded-lg text-xs cursor-not-allowed whitespace-nowrap" title="积分不足，还差 ${r.cost - appState.score} 分">不足</button>
             `}
           </div>
         `;
