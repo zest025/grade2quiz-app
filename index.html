@@ -138,11 +138,11 @@
           </div>
         </div>
 
-        <!-- 云端同步 -->
-        <div>
-          <h3 class="text-xs font-bold text-gray-500 mb-2">☁️ 云端多端同步 (<span class="text-green-600">默认ID: kid_2026</span>)</h3>
+        <!-- 云端同步配置 -->
+        <div class="space-y-3">
+          <h3 class="text-xs font-bold text-gray-500">☁️ 云端多端同步</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input type="text" id="sync-id" placeholder="输入好记的学生ID (例: kid_2026)" class="border rounded-xl px-3 py-2.5 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
+            <input type="text" id="sync-id" placeholder="输入学生ID (默认: kid_2026)" class="border rounded-xl px-3 py-2.5 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
             <div class="flex gap-2">
               <button onclick="uploadToCloud(false)" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs py-2.5 rounded-xl shadow transition">
                 ☁️ 手动上传备份
@@ -186,33 +186,32 @@
       </div>
     </section>
 
-    <!-- 📊 统计与错题集 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 no-print">
-      <!-- 📖 错题本 -->
-      <section id="mistakes-container" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-        <div>
-          <div class="flex justify-between items-center mb-3">
-            <h3 class="text-base sm:text-lg font-bold text-red-600 flex items-center gap-2 font-kuaile">
-              <span>📖</span> 错题自动收集本
-            </h3>
-            <div class="flex gap-1.5">
-              <button id="print-mistakes-btn" onclick="printMistakesPaper()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2.5 py-1.5 rounded-lg font-bold shadow transition">
-                🖨️ 打印错题卷
-              </button>
-              <button id="start-mistake-test-btn" onclick="startMistakeTest()" class="hidden bg-red-500 hover:bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded-lg font-bold shadow transition">
-                🎯 错题重测
-              </button>
-            </div>
+    <!-- 📊 错题本与积分商城上下独立分行排布 -->
+    <div class="space-y-4 sm:space-y-6 no-print">
+      
+      <!-- 📖 错题自动收集本 -->
+      <section id="mistakes-container" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-base sm:text-lg font-bold text-red-600 flex items-center gap-2 font-kuaile">
+            <span>📖</span> 错题自动收集本
+          </h3>
+          <div class="flex gap-1.5">
+            <button id="print-mistakes-btn" onclick="printMistakesPaper()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2.5 py-1.5 rounded-lg font-bold shadow transition">
+              🖨️ 打印错题卷
+            </button>
+            <button id="start-mistake-test-btn" onclick="startMistakeTest()" class="hidden bg-red-500 hover:bg-red-600 text-white text-[11px] px-2.5 py-1.5 rounded-lg font-bold shadow transition">
+              🎯 错题重测
+            </button>
           </div>
-          <div id="mistakes-list" class="space-y-2 text-sm text-gray-600 max-h-48 overflow-y-auto">
-            <p class="text-gray-400 italic">太棒了，目前没有累积的错题！</p>
-          </div>
+        </div>
+        <div id="mistakes-list" class="space-y-2 text-sm text-gray-600 max-h-48 overflow-y-auto">
+          <p class="text-gray-400 italic">太棒了，目前没有累积的错题！</p>
         </div>
         <p class="text-[11px] text-gray-400 mt-3 pt-2 border-t">提示：答对错题后，系统会自动将其从错题本中移除。</p>
       </section>
 
       <!-- 🎁 积分心愿兑换商城与历史记录 -->
-      <section id="shop-container" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+      <section id="shop-container" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4">
         <div>
           <div class="flex justify-between items-center mb-3">
             <h3 class="text-base sm:text-lg font-bold text-yellow-600 flex items-center gap-2 font-kuaile">
@@ -222,25 +221,25 @@
               🔒 家长设置
             </button>
           </div>
-          <!-- 兑换列表 -->
-          <div id="rewards-list" class="space-y-2 max-h-40 overflow-y-auto text-xs">
+          <div id="rewards-list" class="space-y-2 text-xs">
             <!-- 动态渲染 -->
           </div>
         </div>
 
         <!-- 📜 兑换历史记录区 -->
-        <div class="mt-4 pt-3 border-t border-gray-100">
+        <div class="pt-3 border-t border-gray-100">
           <div class="flex justify-between items-center mb-2">
             <h4 class="text-xs font-bold text-gray-600 flex items-center gap-1">
               <span>📜</span> 积分兑换历史记录
             </h4>
             <span id="history-count" class="text-[10px] text-gray-400">共 0 条</span>
           </div>
-          <div id="redemption-history-list" class="space-y-1.5 max-h-32 overflow-y-auto text-[11px] text-gray-500">
+          <div id="redemption-history-list" class="space-y-1.5 text-[11px] text-gray-500">
             <p class="text-gray-400 italic">暂无兑换记录，快去攒积分吧！</p>
           </div>
         </div>
       </section>
+
     </div>
 
   </main>
@@ -252,6 +251,7 @@
   </footer>
 
   <script>
+    // 🔑 在此处填入你的真实 JSONBin Master Key，发布后无需在页面上手动填写
     const DEFAULT_MASTER_KEY = "$2a$10$z.bkMrpAmXGkRtj/YgBVyOGX2vzchhej/q2TCZznPaWUsSczskr5u"; 
 
     const questionBank = [
@@ -301,7 +301,7 @@
       ],
       redemptionHistory: [],
       completedDates: [],
-      syncId: 'kid_2026' // 默认学生ID已统一设为 kid_2026
+      syncId: 'kid_2026'
     };
 
     window.onload = function() {
@@ -452,7 +452,6 @@
         `).join('');
       }
 
-      // 🎁 1. 孩子端商城列表
       const rList = document.getElementById('rewards-list');
       rList.innerHTML = appState.rewards.map((r, i) => {
         const canAfford = appState.score >= r.cost;
@@ -468,7 +467,6 @@
         `;
       }).join('');
 
-      // 📜 2. 积分兑换历史记录渲染
       const historyListEl = document.getElementById('redemption-history-list');
       const historyCountEl = document.getElementById('history-count');
       const historyData = appState.redemptionHistory || [];
@@ -488,7 +486,6 @@
         `).join('');
       }
 
-      // 🎁 3. 家长端管理列表
       const pManageList = document.getElementById('parent-rewards-manage-list');
       if (pManageList) {
         if (appState.rewards.length === 0) {
@@ -732,7 +729,8 @@
     }
 
     async function uploadToCloud(silent = false) {
-      const syncId = document.getElementById('sync-id').value.trim() || 'kid_2026';
+      saveLocalStorage();
+      const syncId = appState.syncId || 'kid_2026';
 
       try {
         const res = await fetch(`https://api.jsonbin.io/v3/b`, {
@@ -762,7 +760,8 @@
     }
 
     async function downloadFromCloud() {
-      const syncId = document.getElementById('sync-id').value.trim() || 'kid_2026';
+      saveLocalStorage();
+      const syncId = appState.syncId || 'kid_2026';
 
       try {
         const res = await fetch(`https://api.jsonbin.io/v3/c/uncategorized/bins`, {
