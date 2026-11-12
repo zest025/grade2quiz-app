@@ -293,16 +293,50 @@
       { id: 105, subject: '天文地理', q: '🌟【附加题·天文地理】在夜晚的星空中，有一颗位置几乎固定的亮星，常被人们用来辨别北方的方向。这颗星叫什么？', options: ['A. 北极星', 'B. 织女星', 'C. 启明星', 'D. 牛郎星'], ans: 0, parse: '北极星位于地球自转轴北极指向的附近，夜间位置几乎不动，是著名的辨别方向（北方）的指示星。' }
     ];
 
+    // 基于种子的洗牌：同一道题在同一天刷新后顺序保持一致，但不同题目/日期顺序不同
+    function seededShuffle(items, seed) {
+      const arr = items.slice();
+      let state = seed >>> 0;
+      const next = () => {
+        state = (state * 1664525 + 1013904223) >>> 0;
+        return state / 4294967296;
+      };
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(next() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // 打乱选项并同步修正正确答案下标，避免正确答案永远停留在 A
+    function shuffleQuestion(q, daySeed = 0) {
+      if (q._shuffled) return q;
+      const order = seededShuffle(
+        q.options.map((_, i) => i),
+        (daySeed * 131 + q.id * 7919 + q.ans * 17) >>> 0
+      );
+      const labels = ['A', 'B', 'C', 'D', 'E'];
+      return {
+        ...q,
+        // 选项文本自带 "A." 前缀，乱序后需要同步重排字母
+        options: order.map((origIdx, newIdx) =>
+          q.options[origIdx].replace(/^[A-E][.．、]\s*/, `${labels[newIdx]}. `)
+        ),
+        ans: order.indexOf(q.ans),
+        _shuffled: true
+      };
+    }
+
     function getTodayQuiz() {
       const now = new Date();
       const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
-      return questionBank[dayOfYear % questionBank.length];
+      return questionBank[dayOfYear % questionBank.length].map(q => shuffleQuestion(q, dayOfYear));
     }
 
     function getTodayBonusQuestion() {
       const now = new Date();
       const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
-      return bonusQuestionBank[dayOfYear % bonusQuestionBank.length];
+      return shuffleQuestion(bonusQuestionBank[dayOfYear % bonusQuestionBank.length], dayOfYear);
     }
 
     let currentQuizData = getTodayQuiz();
@@ -337,6 +371,10 @@
       const saved = localStorage.getItem('grade2_app_state');
       if (saved) {
         try { appState = { ...appState, ...JSON.parse(saved) }; } catch(e){}
+      }
+      // 兼容旧版本保存的错题：补做选项乱序，避免正确答案总在 A
+      if (Array.isArray(appState.mistakes)) {
+        appState.mistakes = appState.mistakes.map(m => shuffleQuestion(m));
       }
       document.getElementById('sync-id').value = appState.syncId || 'kid_2026';
       document.getElementById('new-password-input').value = appState.parentPin || '8888';
