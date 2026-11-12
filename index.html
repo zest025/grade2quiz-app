@@ -144,14 +144,15 @@
             <h3 class="text-xs font-bold text-gray-500">☁️ 云端多端同步</h3>
             <span id="sync-status" class="text-[11px] text-gray-400">☁️ 尚未同步</span>
           </div>
+          <p class="text-[11px] text-gray-400 -mt-1">打开页面会自动同步，通常无需手动操作。</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input type="text" id="sync-id" placeholder="输入学生ID (默认: kid_2026)" class="border rounded-xl px-3 py-2.5 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
             <div class="flex gap-2">
               <button onclick="uploadToCloud(false)" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs py-2.5 rounded-xl shadow transition">
-                ☁️ 手动上传备份
+                ☁️ 上传本机数据
               </button>
               <button onclick="downloadFromCloud()" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs py-2.5 rounded-xl shadow transition">
-                📥 一键拉取恢复
+                📥 拉取云端数据
               </button>
             </div>
           </div>
@@ -280,7 +281,7 @@
     const DEFAULT_MASTER_KEY = "$2a$10$z.bkMrpAmXGkRtj/YgBVyOGX2vzchhej/q2TCZznPaWUsSczskr5u";
 
     // 版本信息：每次部署前更新（版本规则见 CLAUDE.md）
-    const APP_VERSION = 'v1.0.0';
+    const APP_VERSION = 'v1.1.0';
     const APP_RELEASED_AT = '2026-11-12';
 
     // 主干题库（每天自动切换）
@@ -367,6 +368,10 @@
     let currentBonusData = getTodayBonusQuestion();
     let isMistakeMode = false;
     let editingRewardIndex = -1;
+    let syncInProgress = false;
+    let lastSyncFailed = false;
+    let lastResumeSyncAt = 0;
+    let appLoaded = false;
 
     let appState = {
       score: 0,
@@ -384,6 +389,7 @@
       dailyResults: {},
       cloudBins: {},
       lastSyncAt: '',
+      dirty: false,
       syncId: 'kid_2026'
     };
 
@@ -403,10 +409,31 @@
     window.onload = function() {
       loadLocalStorage();
       checkAndUpdateStreak();
+      appLoaded = true;
+      // 首次同步完成前锁定答题，避免用旧数据提交覆盖云端
+      syncInProgress = true;
       renderAll();
       renderSyncStatus();
       renderVersion();
+      autoSyncOnLoad();
     };
+
+    // 页面从后台切回/重新获得焦点时，若没有正在作答，也检查一次云端
+    function maybeAutoSyncOnResume() {
+      if (!appLoaded || document.hidden || syncInProgress) return;
+      if (Date.now() - lastResumeSyncAt < 60000) return;
+      if (isMistakeMode) return; // 错题重测进行中，不打断
+      const active = document.activeElement;
+      if (active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName)) return; // 家长正在输入
+      const hasSelection = document.querySelector(
+        '#questions-list input[type=radio]:checked, #bonus-question-area input[type=radio]:checked'
+      );
+      if (hasSelection) return; // 正在答题，避免自动拉取清空未提交的选择
+      lastResumeSyncAt = Date.now();
+      autoSyncOnLoad();
+    }
+    document.addEventListener('visibilitychange', maybeAutoSyncOnResume);
+    window.addEventListener('focus', maybeAutoSyncOnResume);
 
     // 脚本位于页面底部，DOM 已就绪，直接渲染一次版本号（不依赖 load 事件）
     renderVersion();
@@ -456,6 +483,7 @@
         appState.parentPin = newPin;
         saveLocalStorage();
         alert('✅ 家长管理密码已成功修改！');
+        uploadToCloud(true);
       } else {
         alert('请输入有效的密码！');
       }
@@ -523,16 +551,25 @@
         const today = new Date().toLocaleDateString();
         const isDone = appState.completedDates.includes(today);
         const todayResult = (appState.dailyResults || {})[today];
-        const disabledAttr = isDone ? 'disabled' : '';
-        const labelState = isDone ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-green-50';
-        const bonusLabelState = isDone ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-purple-100';
+        // 首次云端同步完成前暂时锁定答题，避免拿旧数据交卷覆盖其他设备
+        const locked = isDone || syncInProgress;
+        const disabledAttr = locked ? 'disabled' : '';
+        const labelState = locked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-green-50';
+        const bonusLabelState = locked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-purple-100';
 
         titleEl.innerText = `今日核心练习 (${today})`;
-        badgeEl.innerText = isDone
-          ? (todayResult ? `✅ 今日已完成 · 得分 ${todayResult.total || 0} 分` : '✅ 今日已完成')
-          : '基础题 5 分 + 附加挑战 5 分（选做）';
-        setSubmitButton(isDone ? '今日已完成 ✅' : '提交答案并领取积分 🚀', !isDone);
-        extraArea.innerHTML = isDone ? `<span class="text-xs text-green-600 font-bold">明天再来挑战吧！</span>` : ``;
+        badgeEl.innerText = syncInProgress
+          ? '☁️ 正在同步云端数据…'
+          : (isDone
+            ? (todayResult ? `✅ 今日已完成 · 得分 ${todayResult.total || 0} 分` : '✅ 今日已完成')
+            : '基础题 5 分 + 附加挑战 5 分（选做）');
+        setSubmitButton(
+          syncInProgress ? '正在同步云端数据…' : (isDone ? '今日已完成 ✅' : '提交答案并领取积分 🚀'),
+          !locked
+        );
+        extraArea.innerHTML = syncInProgress
+          ? `<span class="text-xs text-blue-500 font-bold">正在同步云端数据，请稍候…</span>`
+          : (isDone ? `<span class="text-xs text-green-600 font-bold">明天再来挑战吧！</span>` : ``);
 
         list.innerHTML = currentQuizData.map((q, idx) => `
           <div class="quiz-card p-3.5 sm:p-4 rounded-xl bg-gray-50 border border-gray-100">
@@ -717,6 +754,15 @@
     }
 
     function submitQuiz() {
+      if (syncInProgress) {
+        alert('正在同步云端数据，请稍候再提交。');
+        return;
+      }
+      // 同步失败时，提交可能覆盖其他设备的最新记录，先让家长确认
+      if (lastSyncFailed && !confirm('⚠️ 云端同步未成功，当前可能不是最新数据，提交可能覆盖其他设备的记录。仍要提交吗？')) {
+        return;
+      }
+
       if (isMistakeMode) {
         let stillWrong = [];
         let clearedCount = 0;
@@ -889,6 +935,7 @@
       saveLocalStorage();
       renderAll();
       alert('已重置今日答题状态，现在可以直接重新答题了。');
+      uploadToCloud(true);
     }
 
     function formatSyncTime(iso) {
@@ -921,15 +968,121 @@
         el.innerText = '☁️ 同步中…';
         el.className = 'text-[11px] text-blue-500';
       } else if (state === 'error') {
-        el.innerText = '⚠️ 同步失败，可点“手动上传备份”重试';
+        el.innerText = '⚠️ 同步失败，请检查网络后刷新重试';
         el.className = 'text-[11px] text-red-500';
       } else {
         renderSyncStatus();
       }
     }
 
+    function hasMeaningfulLocalData() {
+      return !!(appState.lastSyncAt ||
+        (appState.score || 0) > 0 ||
+        (appState.completedDates || []).length ||
+        (appState.mistakes || []).length ||
+        (appState.redemptionHistory || []).length);
+    }
+
+    async function fetchWithTimeout(url, options = {}, ms = 8000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), ms);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    // 用云端记录替换本地状态，并清掉本机“未同步”标记
+    function applyCloudRecord(cloud, binId, syncId) {
+      appState = { ...appState, ...cloud };
+      appState.cloudBins = appState.cloudBins || {};
+      appState.cloudBins[syncId] = binId;
+      appState.dirty = false;
+      appState.lastSyncAt = cloud.lastSyncAt || new Date().toISOString();
+      lastSyncFailed = false;
+      isMistakeMode = false;
+      document.getElementById('sync-id').value = appState.syncId || syncId;
+      saveLocalStorage();
+      renderAll();
+      setSyncStatus('ok');
+    }
+
+    // 打开页面自动同步：云端新就拉取，本地新就上传，两边一样则什么都不做。
+    async function autoSyncOnLoad() {
+      const syncId = appState.syncId || 'kid_2026';
+      lastResumeSyncAt = Date.now();
+      syncInProgress = true;
+      setSyncStatus('syncing');
+      renderQuiz();
+
+      try {
+        appState.cloudBins = appState.cloudBins || {};
+        // 每次打开都按名字找最新的规范 bin，避免各设备缓存到不同的旧 bin
+        let binId = null;
+        try { binId = await findCloudBinId(syncId); } catch (e) { /* 列表失败时退回本机缓存 */ }
+        if (!binId) binId = appState.cloudBins[syncId];
+        if (binId) appState.cloudBins[syncId] = binId;
+
+        let cloud = null;
+        if (binId) {
+          const res = await fetchWithTimeout(`https://api.jsonbin.io/v3/b/${binId}`, {
+            headers: { 'X-Master-Key': DEFAULT_MASTER_KEY }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            cloud = data.record || null;
+          } else if (res.status === 404) {
+            delete appState.cloudBins[syncId];
+            binId = null;
+          } else {
+            throw new Error(`HTTP ${res.status}`);
+          }
+        }
+
+        if (!cloud) {
+          // 云端还没有记录：本机有有效数据才上传，避免空状态占用记录
+          if (hasMeaningfulLocalData()) await uploadToCloud(true);
+          else {
+            lastSyncFailed = false;
+            renderSyncStatus();
+          }
+          return;
+        }
+
+        const cloudTime = cloud.lastSyncAt ? (Date.parse(cloud.lastSyncAt) || 0) : 0;
+        const localTime = appState.lastSyncAt ? (Date.parse(appState.lastSyncAt) || 0) : 0;
+
+        if (appState.dirty && cloudTime > localTime) {
+          // 两边都有新改动：明确询问，避免静默丢数据
+          const keepLocal = confirm('检测到云端有更新的记录，同时本机有未同步的改动。\n\n确定：保留本机改动并上传（可能覆盖云端）\n取消：放弃本机改动，使用云端数据');
+          if (keepLocal) await uploadToCloud(true);
+          else applyCloudRecord(cloud, binId, syncId);
+        } else if (appState.dirty) {
+          // 本机有未上传的改动，先上传，不能用云端旧数据覆盖
+          await uploadToCloud(true);
+        } else if (!appState.lastSyncAt || cloudTime > localTime) {
+          // 新设备首次打开，或云端数据更新：自动拉取
+          applyCloudRecord(cloud, binId, syncId);
+        } else if (localTime > cloudTime) {
+          await uploadToCloud(true);
+        } else {
+          appState.cloudBins[syncId] = binId;
+          lastSyncFailed = false;
+          saveLocalStorage();
+          renderSyncStatus();
+        }
+      } catch (e) {
+        lastSyncFailed = true;
+        setSyncStatus('error');
+      } finally {
+        syncInProgress = false;
+        renderQuiz();
+      }
+    }
+
     async function findCloudBinId(syncId) {
-      const res = await fetch(`https://api.jsonbin.io/v3/c/uncategorized/bins`, {
+      const res = await fetchWithTimeout(`https://api.jsonbin.io/v3/c/uncategorized/bins`, {
         headers: { 'X-Master-Key': DEFAULT_MASTER_KEY }
       });
       if (!res.ok) return null;
@@ -942,9 +1095,16 @@
     }
 
     async function uploadToCloud(silent = false) {
-      saveLocalStorage();
-      const syncId = appState.syncId || 'kid_2026';
+      const syncId = document.getElementById('sync-id').value.trim() || 'kid_2026';
+      if (!silent && !confirm(`将用本机数据覆盖云端 [${syncId}] 的记录，确定继续吗？`)) return;
+      appState.syncId = syncId;
       appState.cloudBins = appState.cloudBins || {};
+      appState.dirty = true; // 先标记为未同步，失败后刷新页面仍会重试上传
+      saveLocalStorage();
+
+      const syncAt = new Date().toISOString();
+      // dirty 只用于本机判断，不写进云端，避免其他设备误以为有未同步改动
+      const buildBody = () => JSON.stringify({ ...appState, lastSyncAt: syncAt, dirty: false });
       setSyncStatus('syncing');
 
       try {
@@ -956,13 +1116,13 @@
 
         let res = null;
         if (binId) {
-          res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+          res = await fetchWithTimeout(`https://api.jsonbin.io/v3/b/${binId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
               'X-Master-Key': DEFAULT_MASTER_KEY
             },
-            body: JSON.stringify(appState)
+            body: buildBody()
           });
           if (res.status === 404) {
             // 云端 bin 已被删除，回退为新建
@@ -973,14 +1133,14 @@
         }
 
         if (!res) {
-          res = await fetch(`https://api.jsonbin.io/v3/b`, {
+          res = await fetchWithTimeout(`https://api.jsonbin.io/v3/b`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'X-Master-Key': DEFAULT_MASTER_KEY,
               'X-Bin-Name': `quiz_${syncId}`
             },
-            body: JSON.stringify(appState)
+            body: buildBody()
           });
           if (res.ok) {
             const created = await res.json();
@@ -990,15 +1150,19 @@
         }
 
         if (res.ok) {
-          appState.lastSyncAt = new Date().toISOString();
+          appState.lastSyncAt = syncAt;
+          appState.dirty = false;
+          lastSyncFailed = false;
           saveLocalStorage();
           setSyncStatus('ok');
           if (!silent) alert(`✅ 成功！当前数据已同步到云端（学生ID: ${syncId}）`);
         } else {
+          lastSyncFailed = true;
           setSyncStatus('error');
           if (!silent) alert('❌ 同步失败，请检查网络或 Master Key。');
         }
       } catch (e) {
+        lastSyncFailed = true;
         setSyncStatus('error');
         if (!silent) alert('❌ 网络连接错误，同步失败。');
       }
@@ -1021,7 +1185,7 @@
           return;
         }
 
-        const dataRes = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        const dataRes = await fetchWithTimeout(`https://api.jsonbin.io/v3/b/${binId}`, {
           headers: { 'X-Master-Key': DEFAULT_MASTER_KEY }
         });
         if (!dataRes.ok) {
@@ -1038,17 +1202,11 @@
           return;
         }
 
-        appState = { ...appState, ...cloudData.record };
-        appState.cloudBins = appState.cloudBins || {};
-        appState.cloudBins[syncId] = binId;
-        appState.lastSyncAt = new Date().toISOString();
-        isMistakeMode = false;
-        document.getElementById('sync-id').value = appState.syncId || syncId;
-        saveLocalStorage();
-        renderAll();
-        setSyncStatus('ok');
+        applyCloudRecord(cloudData.record, binId, syncId);
+        lastSyncFailed = false;
         alert(`✅ 数据同步成功！已恢复 [${syncId}] 的最新记录。`);
       } catch (e) {
+        lastSyncFailed = true;
         setSyncStatus('error');
         alert('拉取数据失败，请检查网络或配置信息。');
       }
@@ -1088,10 +1246,12 @@
           appState = { ...appState, ...data };
           appState.cloudBins = appState.cloudBins || {};
           appState.dailyResults = appState.dailyResults || {};
+          appState.dirty = true; // 导入的数据需要上传，避免下次打开被云端旧数据覆盖
           document.getElementById('sync-id').value = appState.syncId || 'kid_2026';
           saveLocalStorage();
           renderAll();
           alert('✅ 备份导入成功！');
+          uploadToCloud(true);
         } catch (err) {
           alert('❌ 导入失败：文件不是有效的备份 JSON。');
         }

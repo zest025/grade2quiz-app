@@ -9,6 +9,16 @@
   window.fetch = async () => ({ ok: true, status: 200, json: async () => ({ metadata: { id: 'stub' } }) });
 
   await new Promise(r => setTimeout(r, 400));
+  // 等待打开页面时的自动同步结束（测试环境网络已 stub，正常很快）
+  await new Promise(r => {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (!syncInProgress || Date.now() - started > 3000) {
+        clearInterval(timer);
+        r();
+      }
+    }, 50);
+  });
 
   // 干净状态
   appState.completedDates = [];
@@ -17,6 +27,8 @@
   appState.score = 0;
   appState.cloudBins = {};
   appState.lastSyncAt = '';
+  appState.dirty = false;
+  lastSyncFailed = false;
   isMistakeMode = false;
   renderAll();
 
@@ -106,7 +118,65 @@
   ok('download caches bin', appState.cloudBins['kid_2026'] === 'bin123');
   ok('download rendered score', document.getElementById('current-score').innerText === '42', document.getElementById('current-score').innerText);
 
-  // 8. 本地备份导出 / 导入
+  // 8. 打开页面自动同步
+  // 8a. 新设备本地为空，云端较新 -> 自动拉取，且不能把空状态上传
+  const autoCalls = [];
+  appState.score = 0;
+  appState.completedDates = [];
+  appState.mistakes = [];
+  appState.redemptionHistory = [];
+  appState.dailyResults = {};
+  appState.cloudBins = {};
+  appState.lastSyncAt = '';
+  appState.dirty = false;
+  window.fetch = async (url, opts = {}) => {
+    autoCalls.push({ url, method: opts.method || 'GET' });
+    if (url.includes('/c/uncategorized/bins')) {
+      return { ok: true, status: 200, json: async () => ([{ snippetMeta: { name: 'quiz_kid_2026' }, record: 'binA', createdAt: '2026-11-12T00:00:00Z' }]) };
+    }
+    return { ok: true, status: 200, json: async () => ({ record: { score: 55, lastSyncAt: '2026-11-12T06:00:00Z', dirty: false, parentPin: '8888', completedDates: [], mistakes: [], redemptionHistory: [], dailyResults: {}, cloudBins: {} } }) };
+  };
+  await autoSyncOnLoad();
+  ok('auto pull on fresh device', appState.score === 55, String(appState.score));
+  ok('auto pull caches bin', appState.cloudBins['kid_2026'] === 'binA');
+  ok('auto pull unlocks quiz', !document.getElementById('submit-btn').disabled);
+  ok('fresh device does not upload empty state', !autoCalls.some(c => c.method === 'POST' || c.method === 'PUT'), JSON.stringify(autoCalls));
+
+  // 8b. 本机数据较新 -> 自动上传
+  const pushCalls = [];
+  appState.score = 10;
+  appState.cloudBins = {};
+  appState.lastSyncAt = '2026-11-12T07:00:00Z';
+  appState.dirty = false;
+  window.fetch = async (url, opts = {}) => {
+    pushCalls.push({ url, method: opts.method || 'GET' });
+    if (url.includes('/c/uncategorized/bins')) {
+      return { ok: true, status: 200, json: async () => ([{ snippetMeta: { name: 'quiz_kid_2026' }, record: 'binA', createdAt: '2026-11-12T00:00:00Z' }]) };
+    }
+    if ((opts.method || 'GET') === 'PUT') return { ok: true, status: 200, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => ({ record: { score: 5, lastSyncAt: '2026-11-12T06:00:00Z', dirty: false } }) };
+  };
+  await autoSyncOnLoad();
+  ok('auto push when local newer', appState.score === 10 && pushCalls.some(c => c.method === 'PUT'), JSON.stringify(pushCalls));
+  ok('auto push marks synced', appState.dirty === false && !!appState.lastSyncAt);
+
+  // 8c. 同步期间锁定答题
+  syncInProgress = true;
+  renderQuiz();
+  ok('quiz locked during sync', document.getElementById('submit-btn').disabled === true && document.getElementById('quiz-badge').innerText.includes('同步'), document.getElementById('quiz-badge').innerText);
+  syncInProgress = false;
+  renderQuiz();
+
+  // 8d. 上传失败保留 dirty 标记，供下次打开自动重试
+  appState.cloudBins = {};
+  appState.dirty = false;
+  lastSyncFailed = false;
+  window.fetch = async () => { throw new Error('offline'); };
+  await uploadToCloud(true);
+  ok('failed upload keeps dirty flag', appState.dirty === true);
+  ok('failed upload sets sync failure', lastSyncFailed === true);
+
+  // 9. 本地备份导出 / 导入
   const origClick = HTMLAnchorElement.prototype.click;
   HTMLAnchorElement.prototype.click = function () {};
   let exportOk = true;
