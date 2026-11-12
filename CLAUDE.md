@@ -57,7 +57,7 @@ Work on `main` directly (the repo has only that branch). Keep commit messages sh
 
 ## Versioning and deploy
 
-`APP_VERSION` and `APP_RELEASED_AT` are defined near the top of the `index.html` script and rendered in the footer and parent panel. `APP_VERSION` is also the marker `scripts/check-live.sh` uses, so **bump it on every deploy** — patch for fixes, minor for user-visible features, major for breaking data/layout changes — and update `APP_RELEASED_AT` to the deploy date.
+`APP_VERSION` and `APP_RELEASED_AT` are defined near the top of the `index.html` script and rendered in the footer and parent panel. `APP_VERSION` is also the marker `scripts/check-live.sh` uses, so **bump it whenever a deploy changes the page** — patch for fixes, minor for user-visible features, major for breaking data/layout changes — and update `APP_RELEASED_AT` to the deploy date. Tooling-only commits (scripts, docs) do not need a version bump.
 
 Deploy checklist:
 

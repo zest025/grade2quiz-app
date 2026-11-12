@@ -25,16 +25,16 @@ process.stdout.write(match[1]);
 NODE
 )"
 
-echo "检查线上版本：$VERSION（$URL）"
+echo "检查线上版本：${VERSION}（${URL}）"
 CODE="000"
 for i in $(seq 1 60); do
   CODE="$(curl -s -o "$TMP/live.html" -w '%{http_code}' --max-time 10 "${URL}?v=$(date +%s)-$i" || true)"
   if [[ "$CODE" == "200" ]] && grep -q "$VERSION" "$TMP/live.html"; then
-    echo "✅ 线上已更新到 $VERSION（第 $i 次检查）"
+    echo "✅ 线上已更新到 ${VERSION}（第 ${i} 次检查）"
     exit 0
   fi
   sleep 5
 done
 
-echo "❌ 5 分钟内未在线上检测到 $VERSION（最后一次 HTTP 状态：$CODE）" >&2
+echo "❌ 5 分钟内未在线上检测到 ${VERSION}（最后一次 HTTP 状态：${CODE}）" >&2
 exit 1
