@@ -182,6 +182,7 @@
             ⚠️ 重置今日答题状态
           </button>
         </div>
+        <p id="app-version-panel" class="text-[10px] text-gray-400 text-right"></p>
       </div>
     </section>
 
@@ -272,10 +273,15 @@
 
   <footer class="max-w-4xl mx-auto w-full text-center text-xs text-gray-400 mt-6 sm:mt-8 no-print">
     二年级学习辅助系统 · 保持连贯打卡与练习
+    <span id="app-version" class="block text-[10px] text-gray-300 mt-1"></span>
   </footer>
 
   <script>
-    const DEFAULT_MASTER_KEY = "$2a$10$z.bkMrpAmXGkRtj/YgBVyOGX2vzchhej/q2TCZznPaWUsSczskr5u"; 
+    const DEFAULT_MASTER_KEY = "$2a$10$z.bkMrpAmXGkRtj/YgBVyOGX2vzchhej/q2TCZznPaWUsSczskr5u";
+
+    // 版本信息：每次部署前更新（版本规则见 CLAUDE.md）
+    const APP_VERSION = 'v1.0.0';
+    const APP_RELEASED_AT = '2026-11-12';
 
     // 主干题库（每天自动切换）
     const questionBank = [
@@ -386,12 +392,24 @@
       renderState();
     }
 
+    function renderVersion() {
+      const text = `${APP_VERSION} · 更新于 ${APP_RELEASED_AT}`;
+      ['app-version', 'app-version-panel'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+      });
+    }
+
     window.onload = function() {
       loadLocalStorage();
       checkAndUpdateStreak();
       renderAll();
       renderSyncStatus();
+      renderVersion();
     };
+
+    // 脚本位于页面底部，DOM 已就绪，直接渲染一次版本号（不依赖 load 事件）
+    renderVersion();
 
     function loadLocalStorage() {
       const saved = localStorage.getItem('grade2_app_state');

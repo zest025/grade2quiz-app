@@ -16,9 +16,15 @@ open index.html
 
 # Or serve locally (recommended, closer to production)
 python3 -m http.server 8000   # then visit http://localhost:8000
+
+# Pre-push smoke test (headless Chrome, all network calls stubbed)
+./scripts/smoke-test.sh
+
+# Post-push check (polls the live site for the current APP_VERSION)
+./scripts/check-live.sh
 ```
 
-There are no build, lint, or test commands. Verification is manual in a browser. To reset the app to defaults, clear `localStorage["grade2_app_state"]`, or use the parent panel's "重置今日答题状态" action.
+There is no build or lint step. The smoke test requires Node.js and Google Chrome (override the browser with `CHROME_BIN`). To reset the app to defaults, clear `localStorage["grade2_app_state"]`, or use the parent panel's "重置今日答题状态" action.
 
 ## Architecture
 
@@ -47,4 +53,18 @@ Work on `main` directly (the repo has only that branch). Keep commit messages sh
 
 ## Changelog
 
-`CHANGELOG.md` is the human-facing record of what each deployment changed. For every user-visible change, add or extend a dated entry at the top (newest first, Chinese) before committing. Group items under 新增 / 优化 / 修复 and use the deploy date. Git commit messages remain the detailed history; the changelog is the readable summary.
+`CHANGELOG.md` is the human-facing record of what each deployment changed. For every user-visible change, add or extend a dated entry at the top (newest first, Chinese) before committing. Group items under 新增 / 优化 / 修复 / 维护 and use the deploy date. Git commit messages remain the detailed history; the changelog is the readable summary.
+
+## Versioning and deploy
+
+`APP_VERSION` and `APP_RELEASED_AT` are defined near the top of the `index.html` script and rendered in the footer and parent panel. `APP_VERSION` is also the marker `scripts/check-live.sh` uses, so **bump it on every deploy** — patch for fixes, minor for user-visible features, major for breaking data/layout changes — and update `APP_RELEASED_AT` to the deploy date.
+
+Deploy checklist:
+
+1. Update `APP_VERSION` / `APP_RELEASED_AT` and add the matching `CHANGELOG.md` entry.
+2. Run `./scripts/smoke-test.sh` (must report `0 failed`).
+3. Commit and `git push origin main`.
+4. Run `./scripts/check-live.sh` and wait for `✅ 线上已更新到 …`.
+5. Optionally tag the verified release: `git tag v1.0.0 && git push origin v1.0.0`.
+
+Rollback: `git revert <bad-commit>` then push; Pages rebuilds the previous state in about a minute. The previous build stays live if a new Pages build fails.
