@@ -30,17 +30,21 @@ There are no build, lint, or test commands. Verification is manual in a browser.
 
 **Quiz submission (`submitQuiz()`).** Two branches:
 
-- *Normal daily mode*: +1 per correct base question (max 5) plus +5 for the bonus; wrong base questions are appended to `mistakes` (bonus questions are never added). One submission per calendar day is enforced by `completedDates` (a `toLocaleDateString()` string), and the streak increments once per day. Ends with a silent cloud upload.
+- *Normal daily mode*: +1 per correct base question (max 5) plus +5 for the bonus. The bonus question is **optional** — skipping it never blocks submission and only forfeits its 5 points. Wrong base questions are appended to `mistakes` (bonus questions are never added). One submission per calendar day is enforced by `completedDates` (a `toLocaleDateString()` string), the streak increments once per day, and the day's scores are stored in `appState.dailyResults` (pruned to 60 days). After submission, `renderQuiz()` disables the inputs and shows the completed state via `setSubmitButton()`.
 - *Mistake-retest mode* (`isMistakeMode`, entered from 错题重测): renders `appState.mistakes`; each correctly answered mistake is removed from the notebook. No points are awarded.
 
 **Wrong-answer notebook / printing.** `printMistakesPaper()` fills the hidden `#print-mistakes-area` then calls `window.print()`. The `@media print` block hides everything else (`.no-print`, plus explicit ids). New UI sections either need `.no-print` or must be added to that print rule.
 
 **Parent panel.** Gate is a client-side `prompt()` compared against `appState.parentPin` (default `8888`). It manages the PIN, wish rewards (add/edit/delete inline), manual score adjustment, `syncId`, cloud upload/download, and resetting today's status. This is UX gating only — the PIN and the `DEFAULT_MASTER_KEY` are visible in the page source.
 
-**Cloud sync (jsonbin.io).** `DEFAULT_MASTER_KEY` is hardcoded in `index.html`. `uploadToCloud()` **creates a new bin on every call**, named `quiz_${syncId}` (default `kid_2026`) via `X-Bin-Name`; it does not update an existing bin. `downloadFromCloud()` lists uncategorized bins, finds one whose name matches `quiz_${syncId}`, and fetches it. Because uploads accumulate distinct bins, the lookup depends on which matching bin the listing returns — when debugging cross-device sync, inspect the jsonbin collection rather than assuming a single record is updated in place.
+**Cloud sync (jsonbin.io).** `DEFAULT_MASTER_KEY` is hardcoded in `index.html`. The key is **intentionally committed** — this is a private family app with no sensitive data, so do not replace it with a placeholder or move it to a secret; edit the file incrementally and leave the key line untouched. Bin ids are cached per student in `appState.cloudBins[syncId]`: `uploadToCloud()` reuses the cached id with `PUT /v3/b/:id`, and only `POST`s a new bin named `quiz_${syncId}` (default `kid_2026`) when no id is cached or the old bin returns 404. `findCloudBinId()` lists uncategorized bins, filters by `snippetMeta.name`, and picks the newest by `createdAt` (the listing is paginated at 10, newest first). `downloadFromCloud()` confirms before overwriting, resolves the bin by name first, and stores the resolved id. `setSyncStatus()` / `renderSyncStatus()` update the `#sync-status` label. `exportBackup()` / `importBackup()` handle local JSON files. When debugging cross-device sync, inspect the jsonbin collection for duplicate `quiz_*` bins created by older builds.
 
 **Dates and time.** All daily logic uses browser-local time (`toDateString()` / `toLocaleDateString()`), so midnight/timezone changes can make the app consider a new day. Content and UI text are Chinese; keep that language and tone when adding questions or labels.
 
 ## Git workflow
 
 Work on `main` directly (the repo has only that branch). Keep commit messages short and in Chinese, matching the existing history (e.g. `优化移动端响应式布局与触控体验`). Push to deploy via GitHub Pages — there is no separate release step.
+
+## Changelog
+
+`CHANGELOG.md` is the human-facing record of what each deployment changed. For every user-visible change, add or extend a dated entry at the top (newest first, Chinese) before committing. Group items under 新增 / 优化 / 修复 and use the deploy date. Git commit messages remain the detailed history; the changelog is the readable summary.

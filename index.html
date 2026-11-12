@@ -140,7 +140,10 @@
 
         <!-- 云端同步配置 -->
         <div class="space-y-3">
-          <h3 class="text-xs font-bold text-gray-500">☁️ 云端多端同步</h3>
+          <div class="flex justify-between items-center gap-2">
+            <h3 class="text-xs font-bold text-gray-500">☁️ 云端多端同步</h3>
+            <span id="sync-status" class="text-[11px] text-gray-400">☁️ 尚未同步</span>
+          </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input type="text" id="sync-id" placeholder="输入学生ID (默认: kid_2026)" class="border rounded-xl px-3 py-2.5 text-xs w-full focus:outline-none focus:ring-2 focus:ring-green-400">
             <div class="flex gap-2">
@@ -152,6 +155,21 @@
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- 本地备份与恢复 -->
+        <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
+          <h3 class="text-xs font-bold text-gray-500">💾 本地备份与恢复</h3>
+          <div class="flex gap-2">
+            <button onclick="exportBackup()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold text-xs py-2 rounded-xl shadow transition">
+              ⬇️ 导出备份
+            </button>
+            <button onclick="document.getElementById('import-file-input').click()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold text-xs py-2 rounded-xl shadow transition">
+              ⬆️ 导入备份
+            </button>
+            <input type="file" id="import-file-input" accept=".json,application/json" class="hidden" onchange="importBackup(event)">
+          </div>
+          <p class="text-[10px] text-gray-400">导出为 JSON 文件保存在本机；导入会用备份覆盖当前本地数据。</p>
         </div>
 
         <div class="pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
@@ -357,14 +375,22 @@
       ],
       redemptionHistory: [],
       completedDates: [],
+      dailyResults: {},
+      cloudBins: {},
+      lastSyncAt: '',
       syncId: 'kid_2026'
     };
+
+    function renderAll() {
+      renderQuiz();
+      renderState();
+    }
 
     window.onload = function() {
       loadLocalStorage();
       checkAndUpdateStreak();
-      renderQuiz();
-      renderState();
+      renderAll();
+      renderSyncStatus();
     };
 
     function loadLocalStorage() {
@@ -430,6 +456,16 @@
       document.getElementById('streak-days').innerText = `${appState.streak || 0} 天`;
     }
 
+    function setSubmitButton(label, enabled) {
+      const btn = document.getElementById('submit-btn');
+      btn.innerText = label;
+      btn.disabled = !enabled;
+      btn.className = enabled
+        ? 'w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg transition text-base sm:text-lg font-kuaile'
+        : 'w-full sm:w-auto bg-gray-300 text-white font-bold px-8 py-3.5 rounded-xl shadow transition text-base sm:text-lg font-kuaile cursor-not-allowed';
+      btn.classList.remove('hidden');
+    }
+
     function renderQuiz() {
       const list = document.getElementById('questions-list');
       const bonusArea = document.getElementById('bonus-question-area');
@@ -441,7 +477,7 @@
       if (isMistakeMode) {
         titleEl.innerText = `🎯 错题专项集中重测 (${appState.mistakes.length}题)`;
         badgeEl.innerText = `错题重测模式`;
-        submitBtn.innerText = `提交错题重测结果 🚀`;
+        setSubmitButton('提交错题重测结果 🚀', true);
         bonusArea.innerHTML = ``;
         extraArea.innerHTML = `<button onclick="exitMistakeTest()" class="text-gray-500 hover:text-gray-800 underline text-xs">← 返回今日正常打卡</button>`;
 
@@ -449,8 +485,6 @@
           list.innerHTML = `<div class="text-center py-8 text-gray-500">太棒了！错题已经全部清空啦！</div>`;
           submitBtn.classList.add('hidden');
           return;
-        } else {
-          submitBtn.classList.remove('hidden');
         }
 
         list.innerHTML = appState.mistakes.map((q, idx) => `
@@ -469,19 +503,26 @@
 
       } else {
         const today = new Date().toLocaleDateString();
+        const isDone = appState.completedDates.includes(today);
+        const todayResult = (appState.dailyResults || {})[today];
+        const disabledAttr = isDone ? 'disabled' : '';
+        const labelState = isDone ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-green-50';
+        const bonusLabelState = isDone ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-purple-100';
+
         titleEl.innerText = `今日核心练习 (${today})`;
-        badgeEl.innerText = `基础题 5 分 + 附加挑战 5 分`;
-        submitBtn.innerText = `提交答案并领取积分 🚀`;
-        submitBtn.classList.remove('hidden');
-        extraArea.innerHTML = ``;
+        badgeEl.innerText = isDone
+          ? (todayResult ? `✅ 今日已完成 · 得分 ${todayResult.total || 0} 分` : '✅ 今日已完成')
+          : '基础题 5 分 + 附加挑战 5 分（选做）';
+        setSubmitButton(isDone ? '今日已完成 ✅' : '提交答案并领取积分 🚀', !isDone);
+        extraArea.innerHTML = isDone ? `<span class="text-xs text-green-600 font-bold">明天再来挑战吧！</span>` : ``;
 
         list.innerHTML = currentQuizData.map((q, idx) => `
           <div class="quiz-card p-3.5 sm:p-4 rounded-xl bg-gray-50 border border-gray-100">
             <h3 class="font-bold text-gray-800 mb-3 text-sm sm:text-base">${idx + 1}. [${q.type === 'math' ? '数学' : '语文'}] ${q.q}</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               ${q.options.map((opt, oIdx) => `
-                <label class="flex items-center gap-2.5 p-3 rounded-lg border bg-white cursor-pointer hover:bg-green-50 transition text-sm">
-                  <input type="radio" name="q_${q.id}" value="${oIdx}" class="text-green-600 focus:ring-green-500 w-4 h-4">
+                <label class="flex items-center gap-2.5 p-3 rounded-lg border bg-white ${labelState} transition text-sm">
+                  <input type="radio" name="q_${q.id}" value="${oIdx}" ${disabledAttr} class="text-green-600 focus:ring-green-500 w-4 h-4">
                   <span>${opt}</span>
                 </label>
               `).join('')}
@@ -492,20 +533,20 @@
         const bq = currentBonusData;
         bonusArea.innerHTML = `
           <div class="quiz-card p-4 rounded-xl bg-purple-50 border-2 border-purple-200">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-xs font-bold bg-purple-600 text-white px-2.5 py-0.5 rounded-full">🔥 跨学科附加挑战（${bq.subject}）</span>
-              <span class="text-xs font-bold text-purple-700">答对奖励 +5 积分</span>
+            <div class="flex justify-between items-center mb-2 gap-2 flex-wrap">
+              <span class="text-xs font-bold bg-purple-600 text-white px-2.5 py-0.5 rounded-full">🔥 跨学科附加挑战（${bq.subject}）· 选做</span>
+              <span class="text-xs font-bold text-purple-700">答对 +5 积分</span>
             </div>
             <h3 class="font-bold text-purple-900 mb-3 text-sm sm:text-base">${bq.q}</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               ${bq.options.map((opt, oIdx) => `
-                <label class="flex items-center gap-2.5 p-3 rounded-lg border border-purple-200 bg-white cursor-pointer hover:bg-purple-100 transition text-sm">
-                  <input type="radio" name="bonus_q_${bq.id}" value="${oIdx}" class="text-purple-600 focus:ring-purple-500 w-4 h-4">
+                <label class="flex items-center gap-2.5 p-3 rounded-lg border border-purple-200 bg-white ${bonusLabelState} transition text-sm">
+                  <input type="radio" name="bonus_q_${bq.id}" value="${oIdx}" ${disabledAttr} class="text-purple-600 focus:ring-purple-500 w-4 h-4">
                   <span>${opt}</span>
                 </label>
               `).join('')}
             </div>
-            <p class="text-[11px] text-purple-400 mt-2 italic">小提示：动脑筋想一想，挑战成功额外加 5 分哦（打错不计入错题本）！</p>
+            <p class="text-[11px] text-purple-500 mt-2 italic">选做：答对额外 +5 分；答错或跳过都不影响提交和基础题得分。</p>
           </div>
         `;
       }
@@ -514,6 +555,7 @@
     function renderState() {
       document.getElementById('current-score').innerText = appState.score;
       document.getElementById('streak-days').innerText = `${appState.streak || 0} 天`;
+      document.getElementById('sync-id').value = appState.syncId || 'kid_2026';
       
       const mList = document.getElementById('mistakes-list');
       const startTestBtn = document.getElementById('start-mistake-test-btn');
@@ -705,6 +747,7 @@
         let bonusEarned = 0;
         const bq = currentBonusData;
         const bonusSelected = document.querySelector(`input[name="bonus_q_${bq.id}"]:checked`);
+        const bonusAnswered = !!bonusSelected;
         if (bonusSelected && parseInt(bonusSelected.value) === bq.ans) {
           bonusEarned = 5;
         }
@@ -712,6 +755,11 @@
         const totalEarned = earned + bonusEarned;
         appState.score += totalEarned;
         appState.completedDates.push(today);
+        appState.dailyResults = appState.dailyResults || {};
+        appState.dailyResults[today] = { base: earned, bonus: bonusEarned, total: totalEarned };
+        // 只保留最近 60 天的答题记录，避免本地与云端数据无限增长
+        const resultDates = Object.keys(appState.dailyResults).sort();
+        while (resultDates.length > 60) delete appState.dailyResults[resultDates.shift()];
 
         const nowStr = new Date().toDateString();
         if (appState.lastCheckInDate !== nowStr) {
@@ -720,12 +768,14 @@
         }
 
         renderState();
-        
+        renderQuiz();
+        const bonusText = bonusAnswered ? `附加题得分：${bonusEarned}分` : '附加题未作答（不影响提交）';
+
         if (totalEarned >= 8) {
           triggerFireworks();
           alert(`太棒了！表现极其优异！基础题 ${earned} 分 + 附加挑战题 ${bonusEarned} 分，本次共获得 ${totalEarned} 积分！🏆`);
         } else {
-          alert(`答题完成！基础题得分：${earned}分，附加题得分：${bonusEarned}分，本次共获得 ${totalEarned} 积分，累计积分：${appState.score}`);
+          alert(`答题完成！基础题得分：${earned}分，${bonusText}，本次共获得 ${totalEarned} 积分，累计积分：${appState.score}`);
         }
 
         uploadToCloud(true);
@@ -817,70 +867,218 @@
     function resetTodayStatus() {
       const today = new Date().toLocaleDateString();
       appState.completedDates = appState.completedDates.filter(d => d !== today);
+      if (appState.dailyResults) delete appState.dailyResults[today];
       saveLocalStorage();
-      alert('已重置今日答题状态，刷新页面即可重新测试！');
+      renderAll();
+      alert('已重置今日答题状态，现在可以直接重新答题了。');
+    }
+
+    function formatSyncTime(iso) {
+      if (!iso) return '';
+      try {
+        return new Date(iso).toLocaleString('zh-CN', {
+          month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function renderSyncStatus() {
+      const el = document.getElementById('sync-status');
+      if (!el) return;
+      if (appState.lastSyncAt) {
+        el.innerText = `☁️ 上次同步：${formatSyncTime(appState.lastSyncAt)}`;
+        el.className = 'text-[11px] text-green-600';
+      } else {
+        el.innerText = '☁️ 尚未同步';
+        el.className = 'text-[11px] text-gray-400';
+      }
+    }
+
+    function setSyncStatus(state) {
+      const el = document.getElementById('sync-status');
+      if (!el) return;
+      if (state === 'syncing') {
+        el.innerText = '☁️ 同步中…';
+        el.className = 'text-[11px] text-blue-500';
+      } else if (state === 'error') {
+        el.innerText = '⚠️ 同步失败，可点“手动上传备份”重试';
+        el.className = 'text-[11px] text-red-500';
+      } else {
+        renderSyncStatus();
+      }
+    }
+
+    async function findCloudBinId(syncId) {
+      const res = await fetch(`https://api.jsonbin.io/v3/c/uncategorized/bins`, {
+        headers: { 'X-Master-Key': DEFAULT_MASTER_KEY }
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const bins = Array.isArray(data) ? data : (Array.isArray(data.record) ? data.record : []);
+      const matches = bins
+        .filter(b => b && b.snippetMeta && b.snippetMeta.name === `quiz_${syncId}`)
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      return matches.length ? matches[0].record : null;
     }
 
     async function uploadToCloud(silent = false) {
       saveLocalStorage();
       const syncId = appState.syncId || 'kid_2026';
+      appState.cloudBins = appState.cloudBins || {};
+      setSyncStatus('syncing');
 
       try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': DEFAULT_MASTER_KEY,
-            'X-Bin-Name': `quiz_${syncId}`
-          },
-          body: JSON.stringify(appState)
-        });
+        let binId = appState.cloudBins[syncId];
+        if (!binId) {
+          binId = await findCloudBinId(syncId);
+          if (binId) appState.cloudBins[syncId] = binId;
+        }
+
+        let res = null;
+        if (binId) {
+          res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Master-Key': DEFAULT_MASTER_KEY
+            },
+            body: JSON.stringify(appState)
+          });
+          if (res.status === 404) {
+            // 云端 bin 已被删除，回退为新建
+            delete appState.cloudBins[syncId];
+            binId = null;
+            res = null;
+          }
+        }
+
+        if (!res) {
+          res = await fetch(`https://api.jsonbin.io/v3/b`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Master-Key': DEFAULT_MASTER_KEY,
+              'X-Bin-Name': `quiz_${syncId}`
+            },
+            body: JSON.stringify(appState)
+          });
+          if (res.ok) {
+            const created = await res.json();
+            const newId = created && created.metadata && created.metadata.id;
+            if (newId) appState.cloudBins[syncId] = newId;
+          }
+        }
 
         if (res.ok) {
-          if (!silent) {
-            alert(`✅ 成功！当前数据已同步到云端（学生ID: ${syncId}）`);
-          }
+          appState.lastSyncAt = new Date().toISOString();
+          saveLocalStorage();
+          setSyncStatus('ok');
+          if (!silent) alert(`✅ 成功！当前数据已同步到云端（学生ID: ${syncId}）`);
         } else {
-          if (!silent) {
-            alert('❌ 同步失败：请检查 DEFAULT_MASTER_KEY。');
-          }
+          setSyncStatus('error');
+          if (!silent) alert('❌ 同步失败，请检查网络或 Master Key。');
         }
       } catch (e) {
-        if (!silent) {
-          alert('❌ 网络连接错误，同步失败。');
-        }
+        setSyncStatus('error');
+        if (!silent) alert('❌ 网络连接错误，同步失败。');
       }
     }
 
     async function downloadFromCloud() {
       saveLocalStorage();
       const syncId = appState.syncId || 'kid_2026';
+      if (!confirm(`将用云端 [${syncId}] 的记录覆盖当前本地数据，确定继续吗？`)) return;
 
+      appState.cloudBins = appState.cloudBins || {};
+      setSyncStatus('syncing');
       try {
-        const res = await fetch(`https://api.jsonbin.io/v3/c/uncategorized/bins`, {
-          headers: { 'X-Master-Key': DEFAULT_MASTER_KEY }
-        });
-        const binsData = await res.json();
-        
-        const targetBin = binsData.find(b => b.snippetMeta && b.snippetMeta.name === `quiz_${syncId}`);
-        if (!targetBin) {
+        // 优先按名字查最新的 bin，保证多设备收敛到同一份记录
+        let binId = await findCloudBinId(syncId);
+        if (!binId) binId = appState.cloudBins[syncId];
+        if (!binId) {
+          setSyncStatus('error');
           alert(`未在云端找到 ID 为 [${syncId}] 的备份记录。`);
           return;
         }
 
-        const dataRes = await fetch(`https://api.jsonbin.io/v3/b/${targetBin.record}`, {
+        const dataRes = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
           headers: { 'X-Master-Key': DEFAULT_MASTER_KEY }
         });
-        const cloudData = await dataRes.json();
-        
-        if (cloudData.record) {
-          appState = { ...appState, ...cloudData.record };
-          renderState();
-          alert(`✅ 数据同步成功！已成功恢复 [${syncId}] 的最新记录。`);
+        if (!dataRes.ok) {
+          if (dataRes.status === 404) delete appState.cloudBins[syncId];
+          setSyncStatus('error');
+          alert('拉取数据失败，请检查网络或云端记录是否已被删除。');
+          return;
         }
+        const cloudData = await dataRes.json();
+
+        if (!cloudData.record) {
+          setSyncStatus('error');
+          alert('云端记录为空，未做任何修改。');
+          return;
+        }
+
+        appState = { ...appState, ...cloudData.record };
+        appState.cloudBins = appState.cloudBins || {};
+        appState.cloudBins[syncId] = binId;
+        appState.lastSyncAt = new Date().toISOString();
+        isMistakeMode = false;
+        document.getElementById('sync-id').value = appState.syncId || syncId;
+        saveLocalStorage();
+        renderAll();
+        setSyncStatus('ok');
+        alert(`✅ 数据同步成功！已恢复 [${syncId}] 的最新记录。`);
       } catch (e) {
+        setSyncStatus('error');
         alert('拉取数据失败，请检查网络或配置信息。');
       }
+    }
+
+    function exportBackup() {
+      saveLocalStorage();
+      const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const d = new Date();
+      const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      a.href = url;
+      a.download = `grade2-backup-${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function importBackup(event) {
+      const input = event.target;
+      const file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('invalid');
+          ['mistakes', 'rewards', 'completedDates', 'redemptionHistory'].forEach(key => {
+            if (data[key] != null && !Array.isArray(data[key])) throw new Error('invalid');
+          });
+          if (!confirm('导入备份会覆盖当前本地数据，确定继续吗？')) return;
+
+          appState = { ...appState, ...data };
+          appState.cloudBins = appState.cloudBins || {};
+          appState.dailyResults = appState.dailyResults || {};
+          document.getElementById('sync-id').value = appState.syncId || 'kid_2026';
+          saveLocalStorage();
+          renderAll();
+          alert('✅ 备份导入成功！');
+        } catch (err) {
+          alert('❌ 导入失败：文件不是有效的备份 JSON。');
+        }
+      };
+      reader.readAsText(file);
     }
   </script>
 </body>
